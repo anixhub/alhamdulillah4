@@ -1,6 +1,7 @@
 import express from "express";
 import http from "http";
 import path from "path";
+import fs from "fs";
 import dotenv from "dotenv";
 import { WebSocketServer, WebSocket } from "ws";
 import app, { broadcastWebSocketMessage, setWssInstance } from "./api/index";
@@ -53,6 +54,18 @@ async function startServer() {
       console.warn("WebSocket client error:", err.message);
     });
   });
+
+  // Serve static uploads in both dev and production
+  const publicUploadsPath = path.join(process.cwd(), "public", "uploads");
+  const distUploadsPath = path.join(process.cwd(), "dist", "uploads");
+  if (!fs.existsSync(publicUploadsPath)) {
+    fs.mkdirSync(publicUploadsPath, { recursive: true });
+  }
+  if (!fs.existsSync(distUploadsPath)) {
+    fs.mkdirSync(distUploadsPath, { recursive: true });
+  }
+  app.use("/uploads", express.static(publicUploadsPath));
+  app.use("/uploads", express.static(distUploadsPath));
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

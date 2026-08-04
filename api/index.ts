@@ -39,6 +39,7 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "10mb" }));
 
 // Serve static uploads
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
 app.use("/uploads", express.static(path.join(process.cwd(), "dist", "uploads")));
 
@@ -310,6 +311,10 @@ app.post("/api/upload", async (req, res) => {
 
     const buffer = Buffer.from(fileBase64, "base64");
 
+    const rootUploadsDir = path.join(process.cwd(), "uploads");
+    if (!fs.existsSync(rootUploadsDir)) {
+      fs.mkdirSync(rootUploadsDir, { recursive: true });
+    }
     const publicDir = path.join(process.cwd(), "public", "uploads");
     if (!fs.existsSync(publicDir)) {
       fs.mkdirSync(publicDir, { recursive: true });
@@ -319,8 +324,9 @@ app.post("/api/upload", async (req, res) => {
       fs.mkdirSync(distDir, { recursive: true });
     }
 
-    fs.writeFileSync(path.join(publicDir, fileName), buffer);
-    fs.writeFileSync(path.join(distDir, fileName), buffer);
+    try { fs.writeFileSync(path.join(rootUploadsDir, fileName), buffer); } catch(e) {}
+    try { fs.writeFileSync(path.join(publicDir, fileName), buffer); } catch(e) {}
+    try { fs.writeFileSync(path.join(distDir, fileName), buffer); } catch(e) {}
 
     const publicUrl = `/uploads/${fileName}`;
 
@@ -435,6 +441,33 @@ async function ensureTableExists(table: string, pool: mysql.Pool) {
       }
     } catch (e) {
       console.warn("Could not auto-create admin_chat table:", e);
+    }
+  } else if (table === 'lembaga') {
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS \`lembaga\` (
+          \`id\` VARCHAR(50) NOT NULL PRIMARY KEY,
+          \`nama\` VARCHAR(100) NOT NULL,
+          \`kode\` VARCHAR(20) NOT NULL,
+          \`deskripsi\` LONGTEXT NULL,
+          \`gender\` VARCHAR(10) DEFAULT 'Putra',
+          \`jenis\` VARCHAR(20) DEFAULT 'Internal',
+          \`logo\` LONGTEXT NULL,
+          \`ta_mulai_tanggal\` INT DEFAULT 1,
+          \`ta_mulai_bulan\` INT DEFAULT 7,
+          \`ta_selesai_tanggal\` INT DEFAULT 30,
+          \`ta_selesai_bulan\` INT DEFAULT 6,
+          \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+      const cols = ['logo', 'deskripsi', 'kode', 'gender', 'jenis', 'ta_mulai_tanggal', 'ta_mulai_bulan', 'ta_selesai_tanggal', 'ta_selesai_bulan'];
+      for (const col of cols) {
+        try {
+          await pool.query(`ALTER TABLE \`lembaga\` ADD COLUMN \`${col}\` LONGTEXT NULL`);
+        } catch (e) {}
+      }
+    } catch (e) {
+      console.warn("Could not auto-create lembaga table:", e);
     }
   } else if (table === 'tugas' || table === 'tasks') {
     try {

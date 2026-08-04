@@ -519,6 +519,10 @@ export default function LembagaKelasSub({
     }
   }, [genderFilter]);
 
+  useEffect(() => {
+    setLogoError(false);
+  }, [lemLogo]);
+
   // Sync initialTab prop changes
   useEffect(() => {
     if (initialTab) {
