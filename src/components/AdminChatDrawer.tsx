@@ -2101,43 +2101,52 @@ export default function AdminChatDrawer({
                                   </div>
                                 )}
 
-                                {/* Message Text */}
-                                {msg.message && (
-                                  <p className="whitespace-pre-wrap">{renderFormattedMessageText(msg.message)}</p>
-                                )}
-
-                                {/* Attachment */}
-                                {msg.attachment && (
-                                  <div className="mt-2 rounded-xl overflow-hidden bg-white/80 p-2 border border-purple-200">
-                                    {msg.attachment.type === 'image' ? (
-                                      <div>
-                                        <img 
-                                          src={msg.attachment.url} 
-                                          alt={msg.attachment.name} 
-                                          onClick={() => setPreviewImageModal({ url: msg.attachment!.url, name: msg.attachment!.name })}
-                                          className="max-h-56 w-full object-cover rounded-lg mb-1 cursor-pointer hover:opacity-90 transition-opacity shadow-xs" 
-                                        />
-                                        <div className="flex items-center justify-between text-[10px] text-purple-800 font-bold px-1">
-                                          <span className="truncate">{msg.attachment.name}</span>
-                                        </div>
+                                {/* Image Attachment First (if present) + Caption Below */}
+                                {msg.attachment && msg.attachment.type === 'image' ? (
+                                  <>
+                                    <div className="rounded-xl overflow-hidden bg-white/80 p-2 border border-purple-200">
+                                      <img 
+                                        src={msg.attachment.url} 
+                                        alt={msg.attachment.name} 
+                                        onClick={() => setPreviewImageModal({ url: msg.attachment!.url, name: msg.attachment!.name })}
+                                        className="max-h-64 w-full object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-xs" 
+                                      />
+                                      <div className="flex items-center justify-between text-[10px] text-purple-800 font-bold px-1 mt-1">
+                                        <span className="truncate">{msg.attachment.name}</span>
                                       </div>
-                                    ) : (
-                                      <a 
-                                        href={msg.attachment.url} 
-                                        download={msg.attachment.name} 
-                                        target="_blank" 
-                                        rel="noreferrer"
-                                        className="flex items-center gap-2 p-1.5 hover:bg-purple-100 rounded-lg transition-colors text-purple-900"
-                                      >
-                                        <FileText className="h-5 w-5 text-purple-700 shrink-0" />
-                                        <div className="min-w-0 flex-1">
-                                          <p className="text-xs font-bold truncate">{msg.attachment.name}</p>
-                                          <p className="text-[9px] text-purple-600 font-medium">{formatFileSize(msg.attachment.size)}</p>
-                                        </div>
-                                        <Download className="h-4 w-4 shrink-0 text-purple-700" />
-                                      </a>
+                                    </div>
+                                    {/* Message Caption Below Image */}
+                                    {msg.message && (
+                                      <p className="whitespace-pre-wrap mt-2 px-0.5">{renderFormattedMessageText(msg.message)}</p>
                                     )}
-                                  </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    {/* Message Text */}
+                                    {msg.message && (
+                                      <p className="whitespace-pre-wrap">{renderFormattedMessageText(msg.message)}</p>
+                                    )}
+
+                                    {/* Non-Image File Attachment */}
+                                    {msg.attachment && (
+                                      <div className="mt-2 rounded-xl overflow-hidden bg-white/80 p-2 border border-purple-200">
+                                        <a 
+                                          href={msg.attachment.url} 
+                                          download={msg.attachment.name} 
+                                          target="_blank" 
+                                          rel="noreferrer"
+                                          className="flex items-center gap-2 p-1.5 hover:bg-purple-100 rounded-lg transition-colors text-purple-900"
+                                        >
+                                          <FileText className="h-5 w-5 text-purple-700 shrink-0" />
+                                          <div className="min-w-0 flex-1">
+                                            <p className="text-xs font-bold truncate">{msg.attachment.name}</p>
+                                            <p className="text-[9px] text-purple-600 font-medium">{formatFileSize(msg.attachment.size)}</p>
+                                          </div>
+                                          <Download className="h-4 w-4 shrink-0 text-purple-700" />
+                                        </a>
+                                      </div>
+                                    )}
+                                  </>
                                 )}
 
                                 {/* Bottom Right Time & Pin Indicator */}
@@ -2266,43 +2275,52 @@ export default function AdminChatDrawer({
                                       </div>
                                     )}
 
-                                    {/* Message Text */}
-                                    {msg.message && (
-                                      <p className="whitespace-pre-wrap">{renderFormattedMessageText(msg.message)}</p>
-                                    )}
-
-                                    {/* Attachment */}
-                                    {msg.attachment && (
-                                      <div className="mt-2 rounded-xl overflow-hidden bg-slate-50 p-2 border border-slate-200">
-                                        {msg.attachment.type === 'image' ? (
-                                          <div>
-                                            <img 
-                                              src={msg.attachment.url} 
-                                              alt={msg.attachment.name} 
-                                              onClick={() => setPreviewImageModal({ url: msg.attachment!.url, name: msg.attachment!.name })}
-                                              className="max-h-56 w-full object-cover rounded-lg mb-1 cursor-pointer hover:opacity-90 transition-opacity shadow-xs" 
-                                            />
-                                            <div className="flex items-center justify-between text-[10px] text-slate-600 font-bold px-1">
-                                              <span className="truncate">{msg.attachment.name}</span>
-                                            </div>
+                                    {/* Image Attachment First (if present) + Caption Below */}
+                                    {msg.attachment && msg.attachment.type === 'image' ? (
+                                      <>
+                                        <div className="rounded-xl overflow-hidden bg-slate-50 p-2 border border-slate-200">
+                                          <img 
+                                            src={msg.attachment.url} 
+                                            alt={msg.attachment.name} 
+                                            onClick={() => setPreviewImageModal({ url: msg.attachment!.url, name: msg.attachment!.name })}
+                                            className="max-h-64 w-full object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity shadow-xs" 
+                                          />
+                                          <div className="flex items-center justify-between text-[10px] text-slate-600 font-bold px-1 mt-1">
+                                            <span className="truncate">{msg.attachment.name}</span>
                                           </div>
-                                        ) : (
-                                          <a 
-                                            href={msg.attachment.url} 
-                                            download={msg.attachment.name} 
-                                            target="_blank" 
-                                            rel="noreferrer"
-                                            className="flex items-center gap-2 p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-800"
-                                          >
-                                            <FileText className="h-5 w-5 text-purple-600 shrink-0" />
-                                            <div className="min-w-0 flex-1">
-                                              <p className="text-xs font-bold truncate">{msg.attachment.name}</p>
-                                              <p className="text-[9px] text-slate-500 font-medium">{formatFileSize(msg.attachment.size)}</p>
-                                            </div>
-                                            <Download className="h-4 w-4 shrink-0 text-slate-500" />
-                                          </a>
+                                        </div>
+                                        {/* Message Caption Below Image */}
+                                        {msg.message && (
+                                          <p className="whitespace-pre-wrap mt-2 px-0.5">{renderFormattedMessageText(msg.message)}</p>
                                         )}
-                                      </div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        {/* Message Text */}
+                                        {msg.message && (
+                                          <p className="whitespace-pre-wrap">{renderFormattedMessageText(msg.message)}</p>
+                                        )}
+
+                                        {/* Non-Image File Attachment */}
+                                        {msg.attachment && (
+                                          <div className="mt-2 rounded-xl overflow-hidden bg-slate-50 p-2 border border-slate-200">
+                                            <a 
+                                              href={msg.attachment.url} 
+                                              download={msg.attachment.name} 
+                                              target="_blank" 
+                                              rel="noreferrer"
+                                              className="flex items-center gap-2 p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-800"
+                                            >
+                                              <FileText className="h-5 w-5 text-purple-600 shrink-0" />
+                                              <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold truncate">{msg.attachment.name}</p>
+                                                <p className="text-[9px] text-slate-500 font-medium">{formatFileSize(msg.attachment.size)}</p>
+                                              </div>
+                                              <Download className="h-4 w-4 shrink-0 text-slate-500" />
+                                            </a>
+                                          </div>
+                                        )}
+                                      </>
                                     )}
 
                                     {/* WhatsApp Style Bottom Right Time & Pin Indicator */}
@@ -2335,6 +2353,18 @@ export default function AdminChatDrawer({
         {/* INPUT AREA CONTAINER WITH @ MENTION & ATTACHMENT DROPDOWNS (ONLY SHOWN IN CHAT TAB) */}
         {activeTab === 'chat' && (
           <div className="p-3 sm:p-4 bg-white border-t border-slate-100 shrink-0 relative">
+            
+            {/* Floating Scroll to Bottom Button (WhatsApp Style - Positioned directly above input box) */}
+            {showScrollBottomBtn && (
+              <button
+                type="button"
+                onClick={scrollToBottom}
+                className="absolute -top-12 right-5 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow-xl border border-slate-200/90 hover:bg-slate-50 hover:text-purple-700 hover:scale-105 active:scale-95 transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-150"
+                title="Gulir ke paling bawah"
+              >
+                <ChevronDown className="h-5 w-5 transition-transform group-hover:translate-y-0.5" />
+              </button>
+            )}
             
             {/* Reply Message Preview Banner */}
             {replyToMsg && (
@@ -2585,18 +2615,6 @@ export default function AdminChatDrawer({
             </form>
 
           </div>
-        )}
-
-        {/* Floating Scroll to Bottom Button (WhatsApp Style) */}
-        {activeTab === 'chat' && showScrollBottomBtn && (
-          <button
-            type="button"
-            onClick={scrollToBottom}
-            className="absolute bottom-20 right-5 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow-xl border border-slate-200/90 hover:bg-slate-50 hover:text-purple-700 hover:scale-105 active:scale-95 transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-150"
-            title="Gulir ke paling bawah"
-          >
-            <ChevronDown className="h-5 w-5 transition-transform group-hover:translate-y-0.5" />
-          </button>
         )}
 
         {/* MEDIA ACTION PANEL (Panel Aksi) - Appears at the bottom when in multi-select mode OR when a single item is highlighted */}
