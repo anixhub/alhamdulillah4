@@ -1,5 +1,6 @@
 import React from 'react';
 import { Santri, Surat } from '../types';
+import { getApiUrl } from '../lib/api';
 
 export interface PesantrenProfile {
   namaPesantren: string;
@@ -204,7 +205,7 @@ export const renderSantriAvatar = (
     if (hasPhoto) {
       return (
         <img 
-          src={s.filePasFoto} 
+          src={getApiUrl(s.filePasFoto!)} 
           className={`${className} object-cover ${roundedClass}`}
           alt={s?.nama || 'Santri'}
           referrerPolicy="no-referrer"
@@ -223,7 +224,7 @@ export const renderSantriAvatar = (
       <div className={`w-full h-full ${roundedClass} overflow-hidden flex items-center justify-center font-sans font-extrabold select-none ${hasPhoto ? '' : bgColor}`}>
         {hasPhoto ? (
           <img 
-            src={s.filePasFoto} 
+            src={getApiUrl(s.filePasFoto!)} 
             className="w-full h-full object-cover"
             alt={s?.nama || 'Santri'}
             referrerPolicy="no-referrer"

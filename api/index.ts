@@ -5,7 +5,54 @@ import path from "path";
 import fs from "fs";
 import { WebSocketServer, WebSocket } from "ws";
 
-dotenv.config();
+// Persistent root directory helper across Hostinger redeploys (hbuilds root containing config, versions, uploads)
+const getPersistentRootDir = (): string => {
+  let currDir = process.cwd();
+  for (let i = 0; i < 6; i++) {
+    const hasConfig = fs.existsSync(path.join(currDir, 'config'));
+    const hasVersions = fs.existsSync(path.join(currDir, 'versions'));
+    const hasHbuilds = currDir.endsWith('hbuilds') || currDir.includes('hbuilds');
+    if (hasConfig || hasVersions || hasHbuilds) {
+      return currDir;
+    }
+    const parentDir = path.dirname(currDir);
+    if (parentDir === currDir) break;
+    currDir = parentDir;
+  }
+  try {
+    const up3 = path.resolve(process.cwd(), "../../../");
+    if (fs.existsSync(path.join(up3, 'config')) || fs.existsSync(path.join(up3, 'versions')) || up3.includes('hbuilds')) {
+      return up3;
+    }
+    const up4 = path.resolve(process.cwd(), "../../../../");
+    if (up4.includes('hbuilds')) {
+      return up4;
+    }
+  } catch (e) {}
+  return process.cwd();
+};
+
+// Load .env from persistent root or cwd
+const findAndLoadEnv = () => {
+  const root = getPersistentRootDir();
+  const envPathRoot = path.join(root, '.env');
+  if (fs.existsSync(envPathRoot)) {
+    dotenv.config({ path: envPathRoot });
+  }
+
+  let currDir = process.cwd();
+  for (let i = 0; i < 5; i++) {
+    const envPath = path.join(currDir, '.env');
+    if (fs.existsSync(envPath)) {
+      dotenv.config({ path: envPath });
+    }
+    const parentDir = path.dirname(currDir);
+    if (parentDir === currDir) break;
+    currDir = parentDir;
+  }
+  dotenv.config(); // fallback default
+};
+findAndLoadEnv();
 
 const app = express();
 
@@ -304,31 +351,54 @@ app.post("/api/auth/login", async (req, res) => {
 // -------------------------------------------------------------
 app.post("/api/upload", async (req, res) => {
   try {
-    const { fileName, fileBase64 } = req.body;
+    const { fileName, fileBase64, category } = req.body;
     if (!fileName || !fileBase64) {
       return res.status(400).json({ success: false, error: "fileName and fileBase64 are required" });
     }
 
+    const subFolder = (category || 'dokumen').replace(/[^a-zA-Z0-9_-]/g, '_');
     const buffer = Buffer.from(fileBase64, "base64");
 
-    const rootUploadsDir = path.join(process.cwd(), "uploads");
-    if (!fs.existsSync(rootUploadsDir)) {
-      fs.mkdirSync(rootUploadsDir, { recursive: true });
-    }
-    const publicDir = path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(publicDir)) {
-      fs.mkdirSync(publicDir, { recursive: true });
-    }
-    const distDir = path.join(process.cwd(), "dist", "uploads");
-    if (!fs.existsSync(distDir)) {
-      fs.mkdirSync(distDir, { recursive: true });
+    const rootDir = getPersistentRootDir();
+    const dirsToSave: string[] = [
+      path.join(rootDir, "uploads", subFolder),
+      path.join(process.cwd(), "uploads", subFolder),
+      path.join(process.cwd(), "public", "uploads", subFolder),
+      path.join(process.cwd(), "dist", "uploads", subFolder),
+    ];
+
+    let currDir = process.cwd();
+    for (let i = 0; i < 5; i++) {
+      const parentDir = path.dirname(currDir);
+      if (parentDir === currDir) break;
+      currDir = parentDir;
+      if (fs.existsSync(path.join(currDir, 'config')) || currDir.includes('hbuilds') || fs.existsSync(path.join(currDir, 'versions'))) {
+        dirsToSave.push(path.join(currDir, 'uploads', subFolder));
+      }
     }
 
-    try { fs.writeFileSync(path.join(rootUploadsDir, fileName), buffer); } catch(e) {}
-    try { fs.writeFileSync(path.join(publicDir, fileName), buffer); } catch(e) {}
-    try { fs.writeFileSync(path.join(distDir, fileName), buffer); } catch(e) {}
+    try {
+      dirsToSave.push(path.resolve(process.cwd(), "../../../uploads", subFolder));
+      dirsToSave.push(path.resolve(process.cwd(), "../../../../uploads", subFolder));
+    } catch (e) {}
 
-    const publicUrl = `/uploads/${fileName}`;
+    const uniqueDirs = Array.from(new Set(dirsToSave));
+
+    uniqueDirs.forEach(dir => {
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+      } catch (e) {}
+    });
+
+    uniqueDirs.forEach(dir => {
+      try {
+        fs.writeFileSync(path.join(dir, fileName), buffer);
+      } catch (e) {}
+    });
+
+    const publicUrl = `/api/uploads/${subFolder}/${fileName}`;
 
     res.json({
       success: true,
@@ -338,6 +408,52 @@ app.post("/api/upload", async (req, res) => {
   } catch (err: any) {
     console.error("Storage upload handler error:", err);
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Serve uploaded files securely via /api/uploads to bypass AI Studio auth bridge / redirection on mobile & external browsers
+app.get("/api/uploads/:category/:fileName", (req, res) => {
+  try {
+    const { category, fileName } = req.params;
+    const safeCategory = (category || 'dokumen').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const safeFileName = (fileName || '').replace(/[^a-zA-Z0-9_.-]/g, '_');
+
+    const rootDir = getPersistentRootDir();
+    const possiblePaths: string[] = [
+      path.join(rootDir, 'uploads', safeCategory, safeFileName),
+      path.join(rootDir, 'public', 'uploads', safeCategory, safeFileName),
+    ];
+
+    let currDir = process.cwd();
+    for (let i = 0; i < 5; i++) {
+      possiblePaths.push(path.join(currDir, 'uploads', safeCategory, safeFileName));
+      possiblePaths.push(path.join(currDir, 'public', 'uploads', safeCategory, safeFileName));
+      possiblePaths.push(path.join(currDir, 'dist', 'uploads', safeCategory, safeFileName));
+      const parentDir = path.dirname(currDir);
+      if (parentDir === currDir) break;
+      currDir = parentDir;
+      possiblePaths.push(path.join(currDir, 'uploads', safeCategory, safeFileName));
+    }
+
+    possiblePaths.push(
+      path.resolve(process.cwd(), "../../../uploads", safeCategory, safeFileName),
+      path.resolve(process.cwd(), "../../../../uploads", safeCategory, safeFileName),
+      path.join(process.cwd(), "uploads", safeCategory, safeFileName),
+      path.join(process.cwd(), "public", "uploads", safeCategory, safeFileName),
+      path.join(process.cwd(), "dist", "uploads", safeCategory, safeFileName),
+    );
+
+    const uniquePaths = Array.from(new Set(possiblePaths));
+
+    for (const filePath of uniquePaths) {
+      if (fs.existsSync(filePath)) {
+        return res.sendFile(filePath);
+      }
+    }
+
+    res.status(404).json({ error: "File not found" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 

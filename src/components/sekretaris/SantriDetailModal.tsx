@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { Santri, BendaharaRecord, KeamananRecord, Kamar, Kompleks, Kelas, Lembaga, KelompokRombel, RombelAssignment, KategoriRombel } from '../../types';
 import { renderSantriAvatar, isCustomPasFoto, calculateRealtimeAge } from '../SekretarisHelper';
-import { uploadFileToStorage, updateTableRow } from '../../lib/api';
+import { uploadFileToStorage, updateTableRow, getApiUrl } from '../../lib/api';
 import { processUploadedFile } from '../../lib/utils';
 
 const formatDateDMY = (dateVal?: any) => {
@@ -825,7 +825,7 @@ export default function SantriDetailModal({ selectedSantri, onClose, onUpdateSan
                             <div className="flex items-center gap-1.5 shrink-0">
                               <button
                                 type="button"
-                                onClick={() => setPreviewPhotoUrl(file.url!)}
+                                onClick={() => setPreviewPhotoUrl(getApiUrl(file.url!))}
                                 className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors flex items-center gap-1 cursor-pointer border-none"
                                 title="Pratinjau Berkas"
                               >
@@ -837,7 +837,7 @@ export default function SantriDetailModal({ selectedSantri, onClose, onUpdateSan
                                 onClick={() => {
                                   if (file.url) {
                                     const link = document.createElement('a');
-                                    link.href = file.url;
+                                    link.href = getApiUrl(file.url);
                                     link.download = file.defaultName;
                                     document.body.appendChild(link);
                                     link.click();

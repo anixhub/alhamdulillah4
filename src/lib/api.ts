@@ -194,23 +194,33 @@ async function safeJsonParse(res: Response): Promise<any> {
   }
 }
 
-// Helper to resolve dynamic API URLs supporting subpath hosting
+// Helper to resolve dynamic API URLs supporting subpath hosting and absolute origin for cross-device compatibility
 export function getApiUrl(endpoint: string): string {
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
+  if (!endpoint) return '';
+  const trimmed = endpoint.trim();
   
-  const envApiUrl = (import.meta as any).env?.VITE_API_URL;
-  if (envApiUrl && typeof envApiUrl === 'string' && envApiUrl.trim() !== '') {
-    const baseUrl = envApiUrl.trim().endsWith('/') ? envApiUrl.trim().slice(0, -1) : envApiUrl.trim();
-    return `${baseUrl}${cleanEndpoint}`;
-  }
-
-  if (typeof window !== 'undefined') {
-    const pathname = window.location.pathname;
-    const parts = pathname.split('/').filter(Boolean);
-    if (parts.length > 0 && parts[0] !== 'api' && !parts[0].includes('.')) {
-      return `/${parts[0]}${cleanEndpoint}`;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    try {
+      const urlObj = new URL(trimmed);
+      let p = urlObj.pathname + urlObj.search;
+      if (p.startsWith('/uploads/')) {
+        p = p.replace('/uploads/', '/api/uploads/');
+      }
+      return p;
+    } catch (e) {
+      return trimmed;
     }
   }
+
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+
+  let cleanEndpoint = trimmed.startsWith('/') ? trimmed : '/' + trimmed;
+  if (cleanEndpoint.startsWith('/uploads/')) {
+    cleanEndpoint = cleanEndpoint.replace('/uploads/', '/api/uploads/');
+  }
+  
   return cleanEndpoint;
 }
 
@@ -433,47 +443,66 @@ export async function deleteTableRow(table: string, localKey: string, id: string
   return true;
 }
 
-// Upload file with resilient base64 fallback
+// Upload file to physical server folder (categorized) and return server URL
 export async function uploadFileToStorage(base64DataUrl: string, originalName: string, fieldKey: string): Promise<string> {
   if (!base64DataUrl) return '';
   if (base64DataUrl.startsWith('http://') || base64DataUrl.startsWith('https://')) {
     return base64DataUrl;
   }
 
-  const match = base64DataUrl.match(/^data:(.*);base64,(.*)$/);
-  if (!match) {
-    return base64DataUrl;
-  }
+  let base64Data = base64DataUrl;
+  let contentType = 'image/jpeg';
 
-  const contentType = match[1];
-  const base64Data = match[2];
-
-  const extension = originalName.split('.').pop() || 'jpg';
-  const timestamp = Date.now();
-  const randomStr = Math.random().toString(36).substring(2, 7);
-  const uniqueFileName = `${fieldKey}_${timestamp}_${randomStr}.${extension}`;
-
-  try {
-    const res = await fetch(getApiUrl("/api/upload"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fileName: uniqueFileName,
-        fileBase64: base64Data,
-        contentType: contentType
-      })
-    });
-
-    if (res.ok) {
-      const result = await safeJsonParse(res);
-      if (result && result.success && result.publicUrl) {
-        return getApiUrl(result.publicUrl);
-      }
+  if (base64DataUrl.startsWith('data:')) {
+    const match = base64DataUrl.match(/^data:(.*);base64,(.*)$/);
+    if (match) {
+      contentType = match[1];
+      base64Data = match[2];
     }
-  } catch (err) {
-    console.warn("Server upload endpoint error or unavailable, using base64 fallback:", err);
   }
 
-  // Self-contained persistent base64 fallback
-  return base64DataUrl;
+  let category = 'dokumen';
+  const fk = (fieldKey || '').toLowerCase();
+  if (fk.includes('kk')) {
+    category = 'kk';
+  } else if (fk.includes('ktp')) {
+    category = 'ktp';
+  } else if (fk.includes('logo')) {
+    category = 'logo_lembaga';
+  } else if (fk.includes('avatar') || fk.includes('profil') || fk.includes('user')) {
+    category = 'profil_akun';
+  } else if (fk.includes('foto') || fk.includes('pasfoto')) {
+    category = 'pas_foto';
+  } else if (fk.includes('ijazah')) {
+    category = 'ijazah';
+  } else if (fk.includes('akta')) {
+    category = 'akta';
+  } else if (fk.includes('surat')) {
+    category = 'surat';
+  }
+
+  const extension = (originalName || 'file.jpg').split('.').pop() || 'jpg';
+  const uniqueFileName = `${fieldKey || 'file'}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${extension}`;
+
+  const res = await fetch(getApiUrl("/api/upload"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fileName: uniqueFileName,
+      fileBase64: base64Data,
+      contentType: contentType,
+      category: category
+    })
+  });
+
+  if (!res.ok) {
+    throw new Error("Gagal mengunggah file ke server fisik.");
+  }
+
+  const result = await safeJsonParse(res);
+  if (result && result.success && result.publicUrl) {
+    return result.publicUrl;
+  }
+
+  throw new Error("Gagal mengunggah file ke server fisik.");
 }
