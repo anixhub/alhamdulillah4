@@ -1982,8 +1982,12 @@ export default function KamarSub({
                                             </div>
                                           ) : (
                                             <div
-                                              onClick={() => canWriteCurrent && handleOpenAddMemberModal(slotNum)}
-                                              className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-purple-600 cursor-pointer transition-colors py-0.5"
+                                              onClick={() => !isSelectionMode && canWriteCurrent && handleOpenAddMemberModal(slotNum)}
+                                              className={`flex items-center gap-2 text-xs font-medium transition-colors py-0.5 ${
+                                                isSelectionMode 
+                                                  ? 'text-slate-300 cursor-default' 
+                                                  : 'text-slate-400 hover:text-purple-600 cursor-pointer'
+                                              }`}
                                             >
                                               <span>Klik atau tarik santri ke sini</span>
                                             </div>
@@ -2066,7 +2070,9 @@ export default function KamarSub({
                                                  ? 'bg-purple-100/90 ring-1 ring-purple-300 shadow-2xs'
                                                  : isOver && !isOwnSlot 
                                                    ? 'bg-purple-100/95 ring-2 ring-purple-500/90 z-10' 
-                                                   : 'hover:bg-purple-50/60 bg-white'
+                                                   : isSelectionMode
+                                                     ? 'bg-white'
+                                                     : 'hover:bg-purple-50/60 bg-white'
                                              }`}
                                           >
                                             {isSelectionMode && (
@@ -2130,12 +2136,14 @@ export default function KamarSub({
                                                      }
                                                    }}
                                                   className="flex items-center gap-2.5 cursor-pointer group min-w-0"
-                                                  title="Klik untuk lihat biodata"
+                                                  title={!isSelectionMode ? "Klik untuk lihat biodata" : undefined}
                                                 >
                                                   {renderSantriAvatar(s, "w-8 h-8 rounded-full border border-slate-200 text-xs font-bold shrink-0")}
                                                   <div className="min-w-0">
                                                     <div className="flex items-center gap-1.5">
-                                                      <p className="font-extrabold text-slate-800 group-hover:text-purple-600 transition-colors truncate">
+                                                      <p className={`font-extrabold text-slate-800 transition-colors truncate ${
+                                                        !isSelectionMode ? 'group-hover:text-purple-600' : ''
+                                                      }`}>
                                                         {s.nama}
                                                       </p>
                                                       {isKetua && (
@@ -2191,7 +2199,7 @@ export default function KamarSub({
                                     )}
 
                                     {/* Expandable Bottom Border Row on Hover (ONLY for occupied slots & NOT during dragging) */}
-                                    {occupants.length > 0 && !draggedStudentId && (
+                                    {occupants.length > 0 && !draggedStudentId && !isSelectionMode && (
                                       <tr className="group/addslot relative">
                                         <td colSpan={6} className="p-0 border-0">
                                           <div
@@ -2570,16 +2578,18 @@ export default function KamarSub({
                                           <div className="flex items-center gap-3 min-w-0">
                                             {renderSantriAvatar(s, "w-8 h-8 rounded-full border border-slate-200 text-xs font-bold shrink-0")}
                                             <div className="min-w-0">
-                                              <p
-                                                className="text-xs font-extrabold text-slate-800 truncate cursor-pointer hover:text-purple-700 hover:underline"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setSelectedSantriForDetail(s);
-                                                }}
-                                                title="Klik untuk melihat detail santri"
-                                              >
-                                                {s.nama}
-                                              </p>
+                                              <div className="flex items-center">
+                                                <span
+                                                  className="text-xs font-extrabold text-slate-800 truncate cursor-pointer hover:text-purple-700 hover:underline inline-block w-fit max-w-full"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedSantriForDetail(s);
+                                                  }}
+                                                  title="Klik untuk melihat detail santri"
+                                                >
+                                                  {s.nama}
+                                                </span>
+                                              </div>
                                               <p className="text-[10px] text-slate-500 truncate" dangerouslySetInnerHTML={{ __html: subtitleText }} />
                                             </div>
                                           </div>

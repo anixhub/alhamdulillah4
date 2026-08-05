@@ -2763,9 +2763,9 @@ export default function SantriTableView({
 
                   {/* Info box for EMIS */}
                   {!isEmis && (
-                    <div className="mb-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200/80 text-[10.5px] text-amber-900 font-medium leading-snug flex items-center gap-1.5 shadow-2xs">
+                    <div className="mb-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200/80 text-[10.5px] text-amber-900 font-medium leading-snug flex items-center justify-center text-center gap-1.5 shadow-2xs">
                       <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                      <span>Daftarkan EMIS sebelum mendistribusikan ke kelas</span>
+                      <span>Santri belum EMIS.</span>
                     </div>
                   )}
 

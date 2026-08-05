@@ -2174,17 +2174,21 @@ export default function DataAkademikSub({
                       }`}>
                         <div className="flex items-center gap-3">
                           <div 
-                            className="relative shrink-0 select-none cursor-pointer" 
-                            onClick={() => setSelectedSantri(s)}
-                            title="Klik untuk lihat biodata lengkap"
+                            className={`relative shrink-0 select-none ${isSelectionMode ? 'cursor-default' : 'cursor-pointer'}`} 
+                            onClick={() => {
+                              if (!isSelectionMode) setSelectedSantri(s);
+                            }}
+                            title={!isSelectionMode ? "Klik untuk lihat biodata lengkap" : undefined}
                           >
-                            {renderSantriAvatar(s, "h-9 w-9 shrink-0 rounded-full border border-slate-100 shadow-xs hover:ring-2 hover:ring-indigo-300 transition-all")}
+                            {renderSantriAvatar(s, `h-9 w-9 shrink-0 rounded-full border border-slate-100 shadow-xs transition-all ${!isSelectionMode ? 'hover:ring-2 hover:ring-indigo-300' : ''}`)}
                           </div>
                           <div className="flex flex-col min-w-0">
                             <p 
-                              onClick={() => setSelectedSantri(s)}
-                              className="font-display text-sm font-bold text-slate-900 leading-tight hover:text-indigo-600 transition-colors cursor-pointer truncate"
-                              title="Klik untuk lihat biodata lengkap"
+                              onClick={() => {
+                                if (!isSelectionMode) setSelectedSantri(s);
+                              }}
+                              className={`font-display text-sm font-bold text-slate-900 leading-tight transition-colors truncate ${!isSelectionMode ? 'hover:text-indigo-600 cursor-pointer' : 'cursor-default'}`}
+                              title={!isSelectionMode ? "Klik untuk lihat biodata lengkap" : undefined}
                             >
                               {s.nama}
                             </p>
@@ -2337,9 +2341,9 @@ export default function DataAkademikSub({
                                       >
                                         {/* Warning Banner for Unregistered EMIS in Formal Institutions */}
                                         {isFormalLem && !isStudentEmisRegistered && (
-                                          <div className="mb-2 p-2 rounded-xl bg-amber-50 border border-amber-200/80 text-[10.5px] font-medium text-amber-900 flex items-center gap-1.5 leading-snug">
+                                          <div className="mb-2 p-2 rounded-xl bg-amber-50 border border-amber-200/80 text-[10.5px] font-medium text-amber-900 flex items-center justify-center gap-1.5 leading-snug text-center">
                                             <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                                            <span>Santri belum EMIS. Pilihan kelas formal dibatasi ke Calon Peserta Didik.</span>
+                                            <span>Santri belum EMIS.</span>
                                           </div>
                                         )}
 
@@ -2445,15 +2449,10 @@ export default function DataAkademikSub({
                                                       ? 'bg-indigo-50 font-bold text-indigo-900 cursor-pointer'
                                                       : 'text-slate-700 hover:bg-slate-100 cursor-pointer'
                                                 }`}
-                                                title={isClassDisabled ? 'Daftarkan EMIS terlebih dahulu untuk memilih kelas ini' : undefined}
+                                                title={isClassDisabled ? 'Santri belum EMIS' : undefined}
                                               >
                                                 <div className="flex items-center gap-1.5 min-w-0">
                                                   <span className="truncate">{c.nama}</span>
-                                                  {isClassDisabled && (
-                                                    <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-1 py-0.2 rounded shrink-0">
-                                                      Daftarkan EMIS
-                                                    </span>
-                                                  )}
                                                 </div>
                                                 {isSelected && !isClassDisabled && (
                                                   <Check className="h-3.5 w-3.5 text-indigo-800 shrink-0 stroke-[2.5]" />

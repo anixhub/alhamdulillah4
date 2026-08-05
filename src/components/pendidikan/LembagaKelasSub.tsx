@@ -4091,16 +4091,18 @@ export default function LembagaKelasSub({
                                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                     {renderStudentAvatar(student)}
                                     <div className="min-w-0 flex-1">
-                                      <p
-                                        className="font-semibold text-slate-800 truncate cursor-pointer hover:text-emerald-700 hover:underline"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setSelectedSantriForDetail(student);
-                                        }}
-                                        title="Klik untuk melihat detail santri"
-                                      >
-                                        {student.nama}
-                                      </p>
+                                      <div className="flex items-center">
+                                        <span
+                                          className="font-semibold text-slate-800 truncate cursor-pointer hover:text-emerald-700 hover:underline inline-block w-fit max-w-full"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedSantriForDetail(student);
+                                          }}
+                                          title="Klik untuk melihat detail santri"
+                                        >
+                                          {student.nama}
+                                        </span>
+                                      </div>
                                       <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
                                         {[student.desa, student.kecamatan, student.kabupaten].filter(Boolean).map(x => x!.trim()).join(', ') || student.alamat || student.asal || '-'}
                                       </p>
