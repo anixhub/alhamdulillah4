@@ -473,6 +473,8 @@ export async function uploadFileToStorage(base64DataUrl: string, originalName: s
     category = 'profil_akun';
   } else if (fk.includes('foto') || fk.includes('pasfoto')) {
     category = 'pas_foto';
+  } else if (fk.includes('chat') || fk.includes('media') || fk.includes('lampiran')) {
+    category = 'media';
   } else if (fk.includes('ijazah')) {
     category = 'ijazah';
   } else if (fk.includes('akta')) {

@@ -35,7 +35,8 @@ import {
   deleteTableRow, 
   subscribeRealtimeChanges, 
   sendRealtimeWSMessage, 
-  safeLocalStorageSetItem 
+  safeLocalStorageSetItem,
+  uploadFileToStorage
 } from '../lib/api';
 
 export interface ChatAttachment {
@@ -774,6 +775,20 @@ export default function AdminChatDrawer({
     const trimmed = inputText.trim();
     if (!trimmed && !pendingAttachment) return;
 
+    // Process pendingAttachment upload to server storage if base64
+    let finalAttachment = pendingAttachment;
+    if (pendingAttachment && pendingAttachment.url && pendingAttachment.url.startsWith('data:')) {
+      try {
+        const serverUrl = await uploadFileToStorage(pendingAttachment.url, pendingAttachment.name, 'chat_media');
+        finalAttachment = {
+          ...pendingAttachment,
+          url: serverUrl
+        };
+      } catch (err) {
+        console.warn('Gagal mengunggah lampiran chat ke server storage:', err);
+      }
+    }
+
     // Handle Edit Existing Message
     if (editingMsgId) {
       const updatedList = messages.map(m => {
@@ -781,7 +796,7 @@ export default function AdminChatDrawer({
           return {
             ...m,
             message: trimmed || m.message,
-            attachment: pendingAttachment || m.attachment,
+            attachment: finalAttachment || m.attachment,
             is_edited: true,
             edited_at: new Date().toISOString()
           };
@@ -828,7 +843,7 @@ export default function AdminChatDrawer({
       recipient_role: activeChannel,
       message: trimmed,
       text: trimmed,
-      attachment: pendingAttachment || undefined,
+      attachment: finalAttachment || undefined,
       reply_to: replyToMsg ? {
         id: replyToMsg.id,
         sender_name: (replyToMsg.sender_username && replyToMsg.sender_username.toLowerCase() === currentUsername.toLowerCase())
