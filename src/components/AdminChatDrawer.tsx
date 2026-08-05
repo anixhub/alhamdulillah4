@@ -140,6 +140,38 @@ export default function AdminChatDrawer({
   const [showDeleteMediaModal, setShowDeleteMediaModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Pinned Messages State
+  const [pinnedMsgIds, setPinnedMsgIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('smartsantri_admin_chat_pinned');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    safeLocalStorageSetItem('smartsantri_admin_chat_pinned', JSON.stringify(pinnedMsgIds));
+  }, [pinnedMsgIds]);
+
+  const handleTogglePinMessage = (msgId: string) => {
+    setPinnedMsgIds((prev) => {
+      const isPinned = prev.includes(msgId);
+      if (isPinned) {
+        showToast('Sematkan pesan dilepas');
+        return prev.filter((id) => id !== msgId);
+      } else {
+        if (prev.length >= 3) {
+          showToast('Maksimal 3 pesan disematkan. Lepas sematan lain terlebih dahulu.');
+          return prev;
+        }
+        showToast('Pesan berhasil disematkan 📌');
+        return [...prev, msgId];
+      }
+    });
+    setActiveMsgMenuId(null);
+  };
+
   // Unselect media and cancel selection mode when switching to Chat tab or closing modal
   useEffect(() => {
     if (activeTab === 'chat' || !isOpen) {
@@ -917,6 +949,7 @@ export default function AdminChatDrawer({
   };
 
   const handleDeleteMessage = async (msgId: string) => {
+    setPinnedMsgIds(prev => prev.filter(id => String(id) !== String(msgId)));
     setMessages(prev => {
       const updated = prev.filter(m => String(m.id) !== String(msgId));
       safeLocalStorageSetItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
@@ -937,6 +970,7 @@ export default function AdminChatDrawer({
   const handleDeleteMultipleMessages = async (msgIds: string[]) => {
     if (!msgIds || msgIds.length === 0) return;
     const count = msgIds.length;
+    setPinnedMsgIds(prev => prev.filter(id => !msgIds.includes(String(id))));
     setMessages(prev => {
       const updated = prev.filter(m => !msgIds.includes(String(m.id)));
       safeLocalStorageSetItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
@@ -980,6 +1014,59 @@ export default function AdminChatDrawer({
         return '';
       }
       return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const getDateLabel = (isoString?: string): string => {
+    if (!isoString) return '';
+    try {
+      let str = String(isoString).trim();
+      if (str.includes(' ') && !str.includes('T')) {
+        str = str.replace(' ', 'T');
+      }
+      const msgDate = new Date(str);
+      if (isNaN(msgDate.getTime())) return '';
+
+      const today = new Date();
+      const isSameYear = msgDate.getFullYear() === today.getFullYear();
+      const isSameMonth = isSameYear && msgDate.getMonth() === today.getMonth();
+      const isSameDay = isSameMonth && msgDate.getDate() === today.getDate();
+
+      if (isSameDay) return 'Hari ini';
+
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const isYesterday =
+        msgDate.getFullYear() === yesterday.getFullYear() &&
+        msgDate.getMonth() === yesterday.getMonth() &&
+        msgDate.getDate() === yesterday.getDate();
+
+      if (isYesterday) return 'Kemarin';
+
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const startOfMsgDate = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+      const diffDays = Math.round((startOfToday.getTime() - startOfMsgDate.getTime()) / (1000 * 3600 * 24));
+
+      if (diffDays > 0 && diffDays < 7) {
+        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        return days[msgDate.getDay()];
+      }
+
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 
+        'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      ];
+      const dayNum = msgDate.getDate();
+      const monthName = months[msgDate.getMonth()];
+      const yearNum = msgDate.getFullYear();
+
+      if (isSameYear) {
+        return `${dayNum} ${monthName}`;
+      } else {
+        return `${dayNum} ${monthName} ${yearNum}`;
+      }
     } catch (e) {
       return '';
     }
@@ -1034,6 +1121,9 @@ export default function AdminChatDrawer({
     }
     return true;
   });
+
+  // Pinned messages list
+  const pinnedMessages = messages.filter(m => pinnedMsgIds.includes(m.id));
 
   // Selected media message object for Action Panel
   const selectedMediaMsg = selectedMediaId ? messages.find(m => m.id === selectedMediaId) : null;
@@ -1297,6 +1387,58 @@ export default function AdminChatDrawer({
           </div>
         </div>
 
+        {/* PINNED MESSAGES BANNER BAR (SLOTS UP TO 3 PINNED MESSAGES) */}
+        {activeTab === 'chat' && pinnedMessages.length > 0 && (
+          <div className="bg-slate-50/95 border-b border-purple-100/90 px-3.5 py-2 shrink-0 flex items-center justify-between gap-2 shadow-2xs backdrop-blur-xs relative z-20">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-100 text-purple-700 shrink-0 shadow-2xs">
+                <Pin className="h-3.5 w-3.5 fill-purple-600 text-purple-700" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-900">
+                    Pesan Disematkan ({pinnedMessages.length}/3)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-1 overflow-x-auto no-scrollbar pb-0.5">
+                  {pinnedMessages.map((pMsg) => {
+                    const pSender = pMsg.sender_name || pMsg.sender || 'Admin';
+                    const pText = pMsg.message || (pMsg.attachment ? `[File: ${pMsg.attachment.name}]` : 'Pesan');
+                    return (
+                      <div
+                        key={pMsg.id}
+                        onClick={() => handleShowInChat(pMsg.id)}
+                        className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white hover:bg-purple-50/80 border border-purple-200/80 text-left transition-all cursor-pointer shrink-0 max-w-[200px] sm:max-w-[240px] shadow-2xs group"
+                        title="Klik untuk menuju ke lokasi pesan ini"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-bold text-purple-900 group-hover:text-purple-700 truncate leading-tight">
+                            {pSender}
+                          </p>
+                          <p className="text-[10.5px] text-slate-600 group-hover:text-slate-900 truncate leading-tight mt-0.5 font-medium">
+                            {pText}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTogglePinMessage(pMsg.id);
+                          }}
+                          className="p-0.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-colors shrink-0"
+                          title="Lepas sematan"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* TAB 2: MEDIA CONTENT BODY (COMPACT DESKTOP ICON VIEW) */}
         {activeTab === 'media' ? (
           <div className="flex-1 p-3 sm:p-4 overflow-y-auto overscroll-contain bg-slate-50/60">
@@ -1451,225 +1593,119 @@ export default function AdminChatDrawer({
                 </p>
               </div>
             ) : (
-              filteredMessages.map((msg) => {
-                const senderUsername = (msg.sender_username || (msg.sender && msg.sender.includes('@') ? msg.sender : '') || '').trim().toLowerCase();
-                const myUsername = (currentUsername || '').trim().toLowerCase();
+              (() => {
+                // Group messages by date
+                const groupedMessages: { dateKey: string; label: string; msgs: ChatMessage[] }[] = [];
+                filteredMessages.forEach((msg) => {
+                  const d = new Date(msg.created_at || Date.now());
+                  const dateKey = isNaN(d.getTime())
+                    ? 'unknown'
+                    : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                  const label = getDateLabel(msg.created_at);
 
-                const isMe = Boolean(senderUsername) && Boolean(myUsername)
-                  ? (senderUsername === myUsername)
-                  : (Boolean(msg.sender) && Boolean(myUsername) && msg.sender.trim().toLowerCase() === myUsername);
+                  const lastGroup = groupedMessages[groupedMessages.length - 1];
+                  if (lastGroup && lastGroup.dateKey === dateKey) {
+                    lastGroup.msgs.push(msg);
+                  } else {
+                    groupedMessages.push({ dateKey, label, msgs: [msg] });
+                  }
+                });
 
-                const displaySenderName = (msg.sender_name && msg.sender_name.trim() !== 'Admin' ? msg.sender_name : '') ||
-                                          (senderUsername ? senderUsername : '') ||
-                                          msg.sender ||
-                                          'Admin';
-
-                return (
-                  <div
-                    key={msg.id}
-                    id={`msg-${msg.id}`}
-                    className={`flex flex-col group ${isMe ? 'items-end' : 'items-start'} rounded-2xl transition-all duration-300`}
-                  >
-                    {isMe ? (
-                      /* USER SENT MESSAGE (RIGHT ALIGNED) */
-                      <div className="relative max-w-[88%] sm:max-w-[82%] min-w-[150px]">
-                        {/* Hover ChevronDown (v) Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMsgMenuId(activeMsgMenuId === msg.id ? null : msg.id);
-                          }}
-                          className={`absolute top-1.5 right-1.5 z-20 p-1 rounded-full transition-all cursor-pointer opacity-0 group-hover:opacity-100 ${
-                            activeMsgMenuId === msg.id ? 'opacity-100 bg-black/10' : ''
-                          } text-purple-800 hover:bg-purple-200/80`}
-                          title="Opsi Pesan"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </button>
-
-                        {/* Dropdown Options Popup Menu */}
-                        {activeMsgMenuId === msg.id && (
-                          <div 
-                            ref={msgMenuRef}
-                            className="absolute top-8 right-1 z-50 w-36 rounded-2xl bg-white p-1.5 shadow-2xl border border-slate-200 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => handleStartReply(msg)}
-                              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
-                            >
-                              <Reply className="h-3.5 w-3.5 text-purple-600" />
-                              <span>Balas</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleCopyText(msg.message, msg.id);
-                                setActiveMsgMenuId(null);
-                              }}
-                              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
-                            >
-                              <Copy className="h-3.5 w-3.5 text-blue-600" />
-                              <span>Salin</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleStartEdit(msg);
-                                setActiveMsgMenuId(null);
-                              }}
-                              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
-                            >
-                              <Pencil className="h-3.5 w-3.5 text-amber-600" />
-                              <span>Edit</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setConfirmDeleteId(msg.id);
-                                setActiveMsgMenuId(null);
-                              }}
-                              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer border-t border-slate-100 mt-1 pt-1.5"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              <span>Hapus</span>
-                            </button>
-                          </div>
-                        )}
-
-                        {/* User Sent Bubble */}
-                        <div className="rounded-[20px] rounded-tr-xs p-3 pr-7 bg-[#f0ebff] text-[#4c1d95] text-xs sm:text-sm font-medium leading-relaxed shadow-2xs border border-purple-200/60">
-                          {/* Replied Quote Box */}
-                          {msg.reply_to && (
-                            <div 
-                              onClick={() => scrollToMsg(msg.reply_to!.id)}
-                              className="mb-2 rounded-xl bg-purple-200/60 border-l-[4px] border-purple-800 p-2 text-xs flex flex-col cursor-pointer hover:bg-purple-200/80 transition-colors"
-                            >
-                              <span className="font-bold text-purple-950 text-[11px] truncate">
-                                {msg.reply_to.sender_name}
-                              </span>
-                              <p className="text-purple-900/90 text-[11px] truncate font-normal mt-0.5">
-                                {msg.reply_to.message}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Message Text */}
-                          {msg.message && (
-                            <p className="whitespace-pre-wrap">{renderFormattedMessageText(msg.message)}</p>
-                          )}
-
-                          {/* Attachment */}
-                          {msg.attachment && (
-                            <div className="mt-2 rounded-xl overflow-hidden bg-white/80 p-2 border border-purple-200">
-                              {msg.attachment.type === 'image' ? (
-                                <div>
-                                  <img 
-                                    src={msg.attachment.url} 
-                                    alt={msg.attachment.name} 
-                                    onClick={() => setPreviewImageModal({ url: msg.attachment!.url, name: msg.attachment!.name })}
-                                    className="max-h-56 w-full object-cover rounded-lg mb-1 cursor-pointer hover:opacity-90 transition-opacity shadow-xs" 
-                                  />
-                                  <div className="flex items-center justify-between text-[10px] text-purple-800 font-bold px-1">
-                                    <span className="truncate">{msg.attachment.name}</span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <a 
-                                  href={msg.attachment.url} 
-                                  download={msg.attachment.name} 
-                                  target="_blank" 
-                                  rel="noreferrer"
-                                  className="flex items-center gap-2 p-1.5 hover:bg-purple-100 rounded-lg transition-colors text-purple-900"
-                                >
-                                  <FileText className="h-5 w-5 text-purple-700 shrink-0" />
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-bold truncate">{msg.attachment.name}</p>
-                                    <p className="text-[9px] text-purple-600 font-medium">{formatFileSize(msg.attachment.size)}</p>
-                                  </div>
-                                  <Download className="h-4 w-4 shrink-0 text-purple-700" />
-                                </a>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Bottom Right Time */}
-                          <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-purple-600/90 font-semibold select-none">
-                            {msg.is_edited && <span className="italic font-bold text-purple-700 mr-0.5">(edited)</span>}
-                            <span>{formatTime(msg.created_at)}</span>
-                          </div>
-                        </div>
+                return groupedMessages.map((group) => (
+                  <div key={group.dateKey} className="relative space-y-4">
+                    {/* Sticky Floating Date Badge (WhatsApp Style - rounded-full circle sempurna floating at top on scroll) */}
+                    {group.label && (
+                      <div className="sticky top-1 z-20 flex justify-center my-2 pointer-events-none">
+                        <span className="px-3.5 py-1 rounded-full text-[10.5px] font-bold bg-white/95 text-slate-700 shadow-xs border border-slate-200/90 backdrop-blur-md select-none pointer-events-auto flex items-center gap-1">
+                          {group.label}
+                        </span>
                       </div>
-                    ) : (
-                      /* RECEIVED MESSAGE (LEFT ALIGNED WITH AVATAR CIRCLE & NAME) */
-                      <div className="flex items-start gap-2.5 max-w-[92%] sm:max-w-[85%]">
-                        {/* Avatar Circle */}
-                        {msg.sender_avatar ? (
-                          <img
-                            src={msg.sender_avatar}
-                            alt={displaySenderName || 'Avatar'}
-                            className="w-8 h-8 rounded-full object-cover border border-purple-200 shadow-2xs shrink-0 mt-0.5"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-purple-800 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs border border-white mt-0.5 select-none">
-                            {(displaySenderName || 'A').trim().charAt(0).toUpperCase()}
-                          </div>
-                        )}
+                    )}
 
-                        {/* Content Container */}
-                        <div className="flex flex-col min-w-0 flex-1">
-                          {/* Sender Name & Role Label */}
-                          <div className="flex items-center gap-1.5 mb-1 px-0.5 text-[11px] font-bold text-slate-800">
-                            <span>{displaySenderName}</span>
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 font-extrabold uppercase">
-                              {msg.sender_role || msg.senderRole || 'Admin'}
-                            </span>
-                          </div>
+                    {group.msgs.map((msg) => {
+                      const senderUsername = (msg.sender_username || (msg.sender && msg.sender.includes('@') ? msg.sender : '') || '').trim().toLowerCase();
+                      const myUsername = (currentUsername || '').trim().toLowerCase();
 
-                          {/* Message Bubble Box */}
-                          <div className="relative min-w-[150px]">
-                            {/* Hover ChevronDown (v) Button */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveMsgMenuId(activeMsgMenuId === msg.id ? null : msg.id);
-                              }}
-                              className={`absolute top-1.5 right-1.5 z-20 p-1 rounded-full transition-all cursor-pointer opacity-0 group-hover:opacity-100 ${
-                                activeMsgMenuId === msg.id ? 'opacity-100 bg-black/10' : ''
-                              } text-slate-500 hover:bg-slate-200/80`}
-                              title="Opsi Pesan"
-                            >
-                              <ChevronDown className="h-4 w-4" />
-                            </button>
+                      const isMe = Boolean(senderUsername) && Boolean(myUsername)
+                        ? (senderUsername === myUsername)
+                        : (Boolean(msg.sender) && Boolean(myUsername) && msg.sender.trim().toLowerCase() === myUsername);
 
-                            {/* Dropdown Options Popup Menu */}
-                            {activeMsgMenuId === msg.id && (
-                              <div 
-                                ref={msgMenuRef}
-                                className="absolute top-8 right-1 z-50 w-36 rounded-2xl bg-white p-1.5 shadow-2xl border border-slate-200 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100"
+                      const displaySenderName = (msg.sender_name && msg.sender_name.trim() !== 'Admin' ? msg.sender_name : '') ||
+                                                (senderUsername ? senderUsername : '') ||
+                                                msg.sender ||
+                                                'Admin';
+
+                      return (
+                        <div
+                          key={msg.id}
+                          id={`msg-${msg.id}`}
+                          className={`flex flex-col group ${isMe ? 'items-end' : 'items-start'} rounded-2xl transition-all duration-300`}
+                        >
+                          {isMe ? (
+                            /* USER SENT MESSAGE (RIGHT ALIGNED) */
+                            <div className="relative max-w-[88%] sm:max-w-[82%] min-w-[150px]">
+                              {/* Hover ChevronDown (v) Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveMsgMenuId(activeMsgMenuId === msg.id ? null : msg.id);
+                                }}
+                                className={`absolute top-1.5 right-1.5 z-20 p-1 rounded-full transition-all cursor-pointer opacity-0 group-hover:opacity-100 ${
+                                  activeMsgMenuId === msg.id ? 'opacity-100 bg-black/10' : ''
+                                } text-purple-800 hover:bg-purple-200/80`}
+                                title="Opsi Pesan"
                               >
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartReply(msg)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
+                                <ChevronDown className="h-4 w-4" />
+                              </button>
+
+                              {/* Dropdown Options Popup Menu */}
+                              {activeMsgMenuId === msg.id && (
+                                <div 
+                                  ref={msgMenuRef}
+                                  className="absolute top-8 right-1 z-50 w-40 rounded-2xl bg-white p-1.5 shadow-2xl border border-slate-200 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100"
                                 >
-                                  <Reply className="h-3.5 w-3.5 text-purple-600" />
-                                  <span>Balas</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleCopyText(msg.message, msg.id);
-                                    setActiveMsgMenuId(null);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
-                                >
-                                  <Copy className="h-3.5 w-3.5 text-blue-600" />
-                                  <span>Salin</span>
-                                </button>
-                                {currentRole === 'superadmin' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartReply(msg)}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
+                                  >
+                                    <Reply className="h-3.5 w-3.5 text-purple-600" />
+                                    <span>Balas</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleTogglePinMessage(msg.id);
+                                      setActiveMsgMenuId(null);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
+                                  >
+                                    <Pin className={`h-3.5 w-3.5 ${pinnedMsgIds.includes(msg.id) ? 'fill-purple-600 text-purple-600' : 'text-purple-600'}`} />
+                                    <span>{pinnedMsgIds.includes(msg.id) ? 'Lepas Sematan' : 'Sematkan'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleCopyText(msg.message, msg.id);
+                                      setActiveMsgMenuId(null);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
+                                  >
+                                    <Copy className="h-3.5 w-3.5 text-blue-600" />
+                                    <span>Salin</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleStartEdit(msg);
+                                      setActiveMsgMenuId(null);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5 text-amber-600" />
+                                    <span>Edit</span>
+                                  </button>
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1681,79 +1717,249 @@ export default function AdminChatDrawer({
                                     <Trash2 className="h-3.5 w-3.5" />
                                     <span>Hapus</span>
                                   </button>
+                                </div>
+                              )}
+
+                              {/* User Sent Bubble */}
+                              <div className="rounded-[20px] rounded-tr-xs p-3 pr-7 bg-[#f0ebff] text-[#4c1d95] text-xs sm:text-sm font-medium leading-relaxed shadow-2xs border border-purple-200/60">
+                                {/* Replied Quote Box */}
+                                {msg.reply_to && (
+                                  <div 
+                                    onClick={() => scrollToMsg(msg.reply_to!.id)}
+                                    className="mb-2 rounded-xl bg-purple-200/60 border-l-[4px] border-purple-800 p-2 text-xs flex flex-col cursor-pointer hover:bg-purple-200/80 transition-colors"
+                                  >
+                                    <span className="font-bold text-purple-950 text-[11px] truncate">
+                                      {msg.reply_to.sender_name}
+                                    </span>
+                                    <p className="text-purple-900/90 text-[11px] truncate font-normal mt-0.5">
+                                      {msg.reply_to.message}
+                                    </p>
+                                  </div>
                                 )}
-                              </div>
-                            )}
 
-                            {/* Received Message Bubble */}
-                            <div className="rounded-[20px] rounded-tl-xs p-3 pr-7 bg-white text-slate-800 text-xs sm:text-sm font-normal leading-relaxed shadow-2xs border border-slate-200/90">
-                              {/* Replied Quote Box */}
-                              {msg.reply_to && (
-                                <div 
-                                  onClick={() => scrollToMsg(msg.reply_to!.id)}
-                                  className="mb-2 rounded-xl bg-slate-100 border-l-[4px] border-amber-700 p-2 text-xs flex flex-col cursor-pointer hover:bg-slate-200/60 transition-colors"
-                                >
-                                  <span className="font-bold text-amber-800 text-[11px] truncate">
-                                    {msg.reply_to.sender_name}
-                                  </span>
-                                  <p className="text-slate-600 text-[11px] truncate font-normal mt-0.5">
-                                    {msg.reply_to.message}
-                                  </p>
-                                </div>
-                              )}
+                                {/* Message Text */}
+                                {msg.message && (
+                                  <p className="whitespace-pre-wrap">{renderFormattedMessageText(msg.message)}</p>
+                                )}
 
-                              {/* Message Text */}
-                              {msg.message && (
-                                <p className="whitespace-pre-wrap">{renderFormattedMessageText(msg.message)}</p>
-                              )}
-
-                              {/* Attachment */}
-                              {msg.attachment && (
-                                <div className="mt-2 rounded-xl overflow-hidden bg-slate-50 p-2 border border-slate-200">
-                                  {msg.attachment.type === 'image' ? (
-                                    <div>
-                                      <img 
-                                        src={msg.attachment.url} 
-                                        alt={msg.attachment.name} 
-                                        onClick={() => setPreviewImageModal({ url: msg.attachment!.url, name: msg.attachment!.name })}
-                                        className="max-h-56 w-full object-cover rounded-lg mb-1 cursor-pointer hover:opacity-90 transition-opacity shadow-xs" 
-                                      />
-                                      <div className="flex items-center justify-between text-[10px] text-slate-600 font-bold px-1">
-                                        <span className="truncate">{msg.attachment.name}</span>
+                                {/* Attachment */}
+                                {msg.attachment && (
+                                  <div className="mt-2 rounded-xl overflow-hidden bg-white/80 p-2 border border-purple-200">
+                                    {msg.attachment.type === 'image' ? (
+                                      <div>
+                                        <img 
+                                          src={msg.attachment.url} 
+                                          alt={msg.attachment.name} 
+                                          onClick={() => setPreviewImageModal({ url: msg.attachment!.url, name: msg.attachment!.name })}
+                                          className="max-h-56 w-full object-cover rounded-lg mb-1 cursor-pointer hover:opacity-90 transition-opacity shadow-xs" 
+                                        />
+                                        <div className="flex items-center justify-between text-[10px] text-purple-800 font-bold px-1">
+                                          <span className="truncate">{msg.attachment.name}</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ) : (
-                                    <a 
-                                      href={msg.attachment.url} 
-                                      download={msg.attachment.name} 
-                                      target="_blank" 
-                                      rel="noreferrer"
-                                      className="flex items-center gap-2 p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-800"
-                                    >
-                                      <FileText className="h-5 w-5 text-purple-600 shrink-0" />
-                                      <div className="min-w-0 flex-1">
-                                        <p className="text-xs font-bold truncate">{msg.attachment.name}</p>
-                                        <p className="text-[9px] text-slate-500 font-medium">{formatFileSize(msg.attachment.size)}</p>
-                                      </div>
-                                      <Download className="h-4 w-4 shrink-0 text-slate-500" />
-                                    </a>
+                                    ) : (
+                                      <a 
+                                        href={msg.attachment.url} 
+                                        download={msg.attachment.name} 
+                                        target="_blank" 
+                                        rel="noreferrer"
+                                        className="flex items-center gap-2 p-1.5 hover:bg-purple-100 rounded-lg transition-colors text-purple-900"
+                                      >
+                                        <FileText className="h-5 w-5 text-purple-700 shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-xs font-bold truncate">{msg.attachment.name}</p>
+                                          <p className="text-[9px] text-purple-600 font-medium">{formatFileSize(msg.attachment.size)}</p>
+                                        </div>
+                                        <Download className="h-4 w-4 shrink-0 text-purple-700" />
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Bottom Right Time & Pin Indicator */}
+                                <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-purple-600/90 font-semibold select-none">
+                                  {pinnedMsgIds.includes(msg.id) && (
+                                    <span title="Pesan Disematkan">
+                                      <Pin className="h-3 w-3 fill-purple-700 text-purple-700 shrink-0 mr-0.5" />
+                                    </span>
                                   )}
+                                  {msg.is_edited && <span className="italic font-bold text-purple-700 mr-0.5">(edited)</span>}
+                                  <span>{formatTime(msg.created_at)}</span>
                                 </div>
-                              )}
-
-                              {/* WhatsApp Style Bottom Right Time */}
-                              <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-400 font-medium select-none">
-                                {msg.is_edited && <span className="italic font-bold text-purple-600 mr-0.5">(edited)</span>}
-                                <span>{formatTime(msg.created_at)}</span>
                               </div>
                             </div>
-                          </div>
+                          ) : (
+                            /* RECEIVED MESSAGE (LEFT ALIGNED WITH AVATAR CIRCLE & NAME) */
+                            <div className="flex items-start gap-2.5 max-w-[92%] sm:max-w-[85%]">
+                              {/* Avatar Circle */}
+                              {msg.sender_avatar ? (
+                                <img
+                                  src={msg.sender_avatar}
+                                  alt={displaySenderName || 'Avatar'}
+                                  className="w-8 h-8 rounded-full object-cover border border-purple-200 shadow-2xs shrink-0 mt-0.5"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-purple-800 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs border border-white mt-0.5 select-none">
+                                  {(displaySenderName || 'A').trim().charAt(0).toUpperCase()}
+                                </div>
+                              )}
+
+                              {/* Content Container */}
+                              <div className="flex flex-col min-w-0 flex-1">
+                                {/* Sender Name & Role Label */}
+                                <div className="flex items-center gap-1.5 mb-1 px-0.5 text-[11px] font-bold text-slate-800">
+                                  <span>{displaySenderName}</span>
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 font-extrabold uppercase">
+                                    {msg.sender_role || msg.senderRole || 'Admin'}
+                                  </span>
+                                </div>
+
+                                {/* Message Bubble Box */}
+                                <div className="relative min-w-[150px]">
+                                  {/* Hover ChevronDown (v) Button */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveMsgMenuId(activeMsgMenuId === msg.id ? null : msg.id);
+                                    }}
+                                    className={`absolute top-1.5 right-1.5 z-20 p-1 rounded-full transition-all cursor-pointer opacity-0 group-hover:opacity-100 ${
+                                      activeMsgMenuId === msg.id ? 'opacity-100 bg-black/10' : ''
+                                    } text-slate-500 hover:bg-slate-200/80`}
+                                    title="Opsi Pesan"
+                                  >
+                                    <ChevronDown className="h-4 w-4" />
+                                  </button>
+
+                                  {/* Dropdown Options Popup Menu */}
+                                  {activeMsgMenuId === msg.id && (
+                                    <div 
+                                      ref={msgMenuRef}
+                                      className="absolute top-8 right-1 z-50 w-40 rounded-2xl bg-white p-1.5 shadow-2xl border border-slate-200 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100"
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() => handleStartReply(msg)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
+                                      >
+                                        <Reply className="h-3.5 w-3.5 text-purple-600" />
+                                        <span>Balas</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleTogglePinMessage(msg.id);
+                                          setActiveMsgMenuId(null);
+                                        }}
+                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
+                                      >
+                                        <Pin className={`h-3.5 w-3.5 ${pinnedMsgIds.includes(msg.id) ? 'fill-purple-600 text-purple-600' : 'text-purple-600'}`} />
+                                        <span>{pinnedMsgIds.includes(msg.id) ? 'Lepas Sematan' : 'Sematkan'}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleCopyText(msg.message, msg.id);
+                                          setActiveMsgMenuId(null);
+                                        }}
+                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
+                                      >
+                                        <Copy className="h-3.5 w-3.5 text-blue-600" />
+                                        <span>Salin</span>
+                                      </button>
+                                      {currentRole === 'superadmin' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setConfirmDeleteId(msg.id);
+                                            setActiveMsgMenuId(null);
+                                          }}
+                                          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer border-t border-slate-100 mt-1 pt-1.5"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                          <span>Hapus</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Received Message Bubble */}
+                                  <div className="rounded-[20px] rounded-tl-xs p-3 pr-7 bg-white text-slate-800 text-xs sm:text-sm font-normal leading-relaxed shadow-2xs border border-slate-200/90">
+                                    {/* Replied Quote Box */}
+                                    {msg.reply_to && (
+                                      <div 
+                                        onClick={() => scrollToMsg(msg.reply_to!.id)}
+                                        className="mb-2 rounded-xl bg-slate-100 border-l-[4px] border-amber-700 p-2 text-xs flex flex-col cursor-pointer hover:bg-slate-200/60 transition-colors"
+                                      >
+                                        <span className="font-bold text-amber-800 text-[11px] truncate">
+                                          {msg.reply_to.sender_name}
+                                        </span>
+                                        <p className="text-slate-600 text-[11px] truncate font-normal mt-0.5">
+                                          {msg.reply_to.message}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {/* Message Text */}
+                                    {msg.message && (
+                                      <p className="whitespace-pre-wrap">{renderFormattedMessageText(msg.message)}</p>
+                                    )}
+
+                                    {/* Attachment */}
+                                    {msg.attachment && (
+                                      <div className="mt-2 rounded-xl overflow-hidden bg-slate-50 p-2 border border-slate-200">
+                                        {msg.attachment.type === 'image' ? (
+                                          <div>
+                                            <img 
+                                              src={msg.attachment.url} 
+                                              alt={msg.attachment.name} 
+                                              onClick={() => setPreviewImageModal({ url: msg.attachment!.url, name: msg.attachment!.name })}
+                                              className="max-h-56 w-full object-cover rounded-lg mb-1 cursor-pointer hover:opacity-90 transition-opacity shadow-xs" 
+                                            />
+                                            <div className="flex items-center justify-between text-[10px] text-slate-600 font-bold px-1">
+                                              <span className="truncate">{msg.attachment.name}</span>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <a 
+                                            href={msg.attachment.url} 
+                                            download={msg.attachment.name} 
+                                            target="_blank" 
+                                            rel="noreferrer"
+                                            className="flex items-center gap-2 p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-800"
+                                          >
+                                            <FileText className="h-5 w-5 text-purple-600 shrink-0" />
+                                            <div className="min-w-0 flex-1">
+                                              <p className="text-xs font-bold truncate">{msg.attachment.name}</p>
+                                              <p className="text-[9px] text-slate-500 font-medium">{formatFileSize(msg.attachment.size)}</p>
+                                            </div>
+                                            <Download className="h-4 w-4 shrink-0 text-slate-500" />
+                                          </a>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* WhatsApp Style Bottom Right Time & Pin Indicator */}
+                                    <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-400 font-medium select-none">
+                                      {pinnedMsgIds.includes(msg.id) && (
+                                        <span title="Pesan Disematkan">
+                                          <Pin className="h-3 w-3 fill-purple-600 text-purple-600 shrink-0 mr-0.5" />
+                                        </span>
+                                      )}
+                                      {msg.is_edited && <span className="italic font-bold text-purple-600 mr-0.5">(edited)</span>}
+                                      <span>{formatTime(msg.created_at)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
-                );
-              })
+                ));
+              })()
             )}
 
             <div ref={messagesEndRef} />
