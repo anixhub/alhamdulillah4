@@ -361,8 +361,8 @@ export default function DataKamarSantriSub({
 
   // Filter students based on search and selected filters
   const filteredSantri = santriList.filter((s) => {
-    // 0. Filter out Alumni
-    if (s.statusKeanggotaan === "Alumni") {
+    // 0. Filter out Alumni and Meninggal
+    if (s.statusKeanggotaan === "Alumni" || s.statusKeanggotaan === "Meninggal") {
       return false;
     }
 

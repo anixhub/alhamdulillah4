@@ -24,6 +24,7 @@ import {
 import { Santri, KeamananRecord, BendaharaRecord, Kompleks, Kamar } from '../types';
 import { INITIAL_KOMPLEKS, INITIAL_KAMAR } from './HumasyView';
 import { fetchTableData, insertTableRow, updateTableRow, deleteTableRow, subscribeRealtimeChanges } from '../lib/api';
+import SantriDetailModal from './sekretaris/SantriDetailModal';
 
 interface HomeViewProps {
   santriList: Santri[];
@@ -98,6 +99,7 @@ export default function HomeView({
   // Task modal states
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<TaskItem | null>(null);
+  const [selectedSantriForDetail, setSelectedSantriForDetail] = useState<Santri | null>(null);
 
   // Tab for Top 10 Card (Pelanggaran vs Pelanggar)
   const [violationsTab, setViolationsTab] = useState<'pelanggaran' | 'pelanggar'>('pelanggaran');
@@ -477,27 +479,39 @@ export default function HomeView({
   , [santriList]);
   const pctPutriAlumniEmis = putriAlumni > 0 ? Math.round((putriAlumniEmis / putriAlumni) * 100) : 0;
 
-  // 5. Aktifitas Terbaru Real
-  const latestActivity = useMemo(() => {
+  // 5. Aktifitas Terbaru Real dengan navigasi
+  const allActivities = useMemo(() => {
+    const list: { time: string; text: string }[] = [];
     if (keamananList && keamananList.length > 0) {
-      const top = keamananList[keamananList.length - 1];
-      return {
-        time: top.tanggal || new Date().toLocaleDateString('id-ID'),
-        text: `Catatan Pelanggaran: ${top.namaSantri} (${top.jenisPelanggaran || 'Pelanggaran baru'})`
-      };
+      [...keamananList].reverse().forEach((k) => {
+        list.push({
+          time: k.tanggal || new Date().toLocaleDateString('id-ID'),
+          text: `Catatan Pelanggaran: ${k.namaSantri} (${k.jenisPelanggaran || 'Pelanggaran'}) - Poin: ${k.poin}`
+        });
+      });
     }
     if (santriList && santriList.length > 0) {
-      const lastSantri = santriList[santriList.length - 1];
-      return {
-        time: new Date().toLocaleDateString('id-ID'),
-        text: `Data ${lastSantri.nama} (${lastSantri.gender || 'Santri'}) terdaftar/diperbarui`
-      };
+      [...santriList].reverse().slice(0, 30).forEach((s) => {
+        list.push({
+          time: s.tanggalMasuk || new Date().toLocaleDateString('id-ID'),
+          text: `Santri Baru: ${s.nama} (${s.kelas || s.kamar || s.gender})`
+        });
+      });
     }
-    return {
-      time: '-',
-      text: 'Belum ada aktivitas terbaru'
-    };
+    if (list.length === 0) {
+      list.push({ time: '-', text: 'Belum ada aktivitas terbaru' });
+    }
+    return list;
   }, [keamananList, santriList]);
+
+  const [activityIndex, setActivityIndex] = useState(0);
+  useEffect(() => {
+    if (activityIndex >= allActivities.length) {
+      setActivityIndex(0);
+    }
+  }, [allActivities.length]);
+
+  const currentActivity = allActivities[activityIndex] || allActivities[0];
 
   // 6. Top Violators (Santri) strictly from keamananList
   const topViolators = useMemo(() => {
@@ -773,31 +787,39 @@ export default function HomeView({
                 Aktifitas Terbaru
               </span>
               <span className="text-rose-500 font-bold shrink-0 text-[11px] md:text-xs">
-                ({latestActivity.time})
+                ({currentActivity.time})
               </span>
             </div>
             
             <div className="flex-1 overflow-hidden relative h-5 flex items-center">
               <motion.div
-                key={latestActivity.text}
+                key={currentActivity.text}
                 className="whitespace-nowrap text-slate-700 text-[11px] md:text-xs font-semibold inline-block"
                 animate={{ x: ['100%', '-100%'] }}
                 transition={{
                   repeat: Infinity,
                   repeatType: 'loop',
-                  duration: Math.max(12, latestActivity.text.length * 0.28),
+                  duration: Math.max(12, currentActivity.text.length * 0.28),
                   ease: 'linear'
                 }}
               >
-                {latestActivity.text}
+                {currentActivity.text}
               </motion.div>
             </div>
 
             <div className="flex items-center gap-0.5 text-slate-400 shrink-0 bg-white pl-2 z-10">
-              <button className="p-1 hover:text-slate-600 cursor-pointer">
+              <button 
+                onClick={() => setActivityIndex(prev => Math.max(0, prev - 1))}
+                className="p-1 hover:text-slate-600 cursor-pointer"
+                title="Aktivitas Lebih Baru"
+              >
                 <ChevronUp className="w-3.5 h-3.5" />
               </button>
-              <button className="p-1 hover:text-slate-600 cursor-pointer">
+              <button 
+                onClick={() => setActivityIndex(prev => Math.min(allActivities.length - 1, prev + 1))}
+                className="p-1 hover:text-slate-600 cursor-pointer"
+                title="Aktivitas Lebih Lama"
+              >
                 <ChevronDown className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -1241,7 +1263,7 @@ export default function HomeView({
                 <span className="text-slate-700 font-bold">Santri Aktif <span className="text-[#0D8A68]">Putra</span></span>
                 <span className="font-extrabold text-slate-800">{putraAktifEmis} <span className="text-slate-400 font-normal">/{putraAktif}</span></span>
               </div>
-              <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden relative border border-slate-200/60">
+              <div className="w-full bg-slate-100 h-5 rounded-full overflow-hidden relative border border-slate-200/60">
                 <div className="bg-[#0D8A68] h-full rounded-full transition-all duration-500" style={{ width: `${pctPutraAktifEmis}%` }} />
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] text-white font-black drop-shadow-xs">{pctPutraAktifEmis}%</span>
               </div>
@@ -1253,7 +1275,7 @@ export default function HomeView({
                 <span className="text-slate-700 font-bold">Santri Alumni <span className="text-[#0D8A68]">Putra</span></span>
                 <span className="font-extrabold text-slate-800">{putraAlumniEmis} <span className="text-slate-400 font-normal">/{putraAlumni}</span></span>
               </div>
-              <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden relative border border-slate-200/60">
+              <div className="w-full bg-slate-100 h-5 rounded-full overflow-hidden relative border border-slate-200/60">
                 <div className="bg-[#0D8A68] h-full rounded-full transition-all duration-500" style={{ width: `${pctPutraAlumniEmis}%` }} />
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] text-white font-black drop-shadow-xs">{pctPutraAlumniEmis}%</span>
               </div>
@@ -1265,7 +1287,7 @@ export default function HomeView({
                 <span className="text-slate-700 font-bold">Santri Aktif <span className="text-[#3B82F6]">Putri</span></span>
                 <span className="font-extrabold text-slate-800">{putriAktifEmis} <span className="text-slate-400 font-normal">/{putriAktif}</span></span>
               </div>
-              <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden relative border border-slate-200/60">
+              <div className="w-full bg-slate-100 h-5 rounded-full overflow-hidden relative border border-slate-200/60">
                 <div className="bg-[#3B82F6] h-full rounded-full transition-all duration-500" style={{ width: `${pctPutriAktifEmis}%` }} />
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] text-white font-black drop-shadow-xs">{pctPutriAktifEmis}%</span>
               </div>
@@ -1277,7 +1299,7 @@ export default function HomeView({
                 <span className="text-slate-700 font-bold">Santri Alumni <span className="text-[#3B82F6]">Putri</span></span>
                 <span className="font-extrabold text-slate-800">{putriAlumniEmis} <span className="text-slate-400 font-normal">/{putriAlumni}</span></span>
               </div>
-              <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden relative border border-slate-200/60">
+              <div className="w-full bg-slate-100 h-5 rounded-full overflow-hidden relative border border-slate-200/60">
                 <div className="bg-[#3B82F6] h-full rounded-full transition-all duration-500" style={{ width: `${pctPutriAlumniEmis}%` }} />
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] text-white font-black drop-shadow-xs">{pctPutriAlumniEmis}%</span>
               </div>
@@ -1380,7 +1402,24 @@ export default function HomeView({
                 return (
                   <div 
                     key={idx}
-                    onClick={() => onChangeModule('keamanan')}
+                    onClick={() => {
+                      const found = santriList.find(s => s.nama.toLowerCase() === item.nama.toLowerCase());
+                      if (found) {
+                        setSelectedSantriForDetail(found);
+                      } else {
+                        setSelectedSantriForDetail({
+                          id: 'fallback-' + idx,
+                          nis: '-',
+                          nama: item.nama,
+                          kelas: '-',
+                          kamar: '-',
+                          asal: '-',
+                          gender: 'Putra',
+                          tanggalMasuk: '-',
+                          statusKeanggotaan: 'Aktif'
+                        });
+                      }
+                    }}
                     className="bg-[#12A07E] hover:bg-[#0F9172] border border-emerald-400/20 rounded-full py-2 px-3.5 flex items-center justify-between cursor-pointer transition-all group shadow-2xs"
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -1765,6 +1804,14 @@ export default function HomeView({
           </div>
         )}
       </AnimatePresence>
+
+      {/* SANTRI DETAIL MODAL */}
+      {selectedSantriForDetail && (
+        <SantriDetailModal
+          selectedSantri={selectedSantriForDetail}
+          onClose={() => setSelectedSantriForDetail(null)}
+        />
+      )}
 
 </motion.div>
   );

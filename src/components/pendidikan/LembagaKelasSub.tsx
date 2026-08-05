@@ -1643,20 +1643,7 @@ export default function LembagaKelasSub({
 
   // Render Student table avatars safely
   const renderStudentAvatar = (s: Santri) => {
-    const age = calculateRealtimeAge(s.tanggalLahir);
-    return (
-      <div className="relative shrink-0 select-none">
-        {renderSantriAvatar(s, "w-10 h-10 text-xs font-black rounded-full overflow-hidden border border-slate-100 shadow-2xs")}
-        {age !== null && (
-          <span 
-            className="absolute -bottom-1 -left-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-emerald-600 text-[8px] font-black text-white border border-white shadow-xs" 
-            title={`Umur realtime: ${age} tahun`}
-          >
-            {age}
-          </span>
-        )}
-      </div>
-    );
+    return renderSantriAvatar(s, "w-10 h-10 shrink-0 rounded-full border border-slate-100 shadow-xs");
   };
 
   const canWriteCurrent = selectedGender === 'Putra' ? canWritePutra : canWritePutri;
@@ -4241,7 +4228,16 @@ export default function LembagaKelasSub({
                                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                     {renderStudentAvatar(student)}
                                     <div className="min-w-0 flex-1">
-                                      <p className="font-semibold text-slate-800 truncate group-hover:text-emerald-900">{student.nama}</p>
+                                      <p
+                                        className="font-semibold text-slate-800 truncate cursor-pointer hover:text-emerald-700 hover:underline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedSantriForDetail(student);
+                                        }}
+                                        title="Klik untuk melihat detail santri"
+                                      >
+                                        {student.nama}
+                                      </p>
                                       <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
                                         {[student.desa, student.kecamatan, student.kabupaten].filter(Boolean).map(x => x!.trim()).join(', ') || student.alamat || student.asal || '-'}
                                       </p>

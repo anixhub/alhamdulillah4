@@ -73,6 +73,7 @@ const MENU_ITEMS: MenuItem[] = [
     hoverBg: 'hover:bg-emerald-50/70',
     activeColor: 'bg-emerald-50/80 text-emerald-700 border-emerald-200',
     submenus: [
+      { id: 'overview', label: 'Overview' },
       { id: 'santri', label: 'Data Induk Santri' }
     ] 
   },
@@ -169,6 +170,16 @@ const SETTINGS_MENU_ITEMS: MenuItem[] = [
     color: 'text-rose-600',
     hoverBg: 'hover:bg-rose-50/70',
     activeColor: 'bg-rose-50/80 text-rose-700 border-rose-200',
+    submenus: []
+  },
+  {
+    id: 'feedback',
+    label: 'Feedback & Masukan',
+    desc: 'Kotak masuk masukan dari pengurus',
+    icon: MessageCircle,
+    color: 'text-purple-600',
+    hoverBg: 'hover:bg-purple-50/70',
+    activeColor: 'bg-purple-50/80 text-purple-700 border-purple-200',
     submenus: []
   },
   {

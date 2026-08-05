@@ -2593,7 +2593,16 @@ export default function RombelSub({
                                     />
 
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-xs font-bold text-slate-850 truncate leading-tight">{s.nama}</p>
+                                      <p
+                                        className="text-xs font-bold text-slate-850 truncate leading-tight cursor-pointer hover:text-indigo-700 hover:underline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedSantriForDetail(s);
+                                        }}
+                                        title="Klik untuk melihat detail santri"
+                                      >
+                                        {s.nama}
+                                      </p>
                                       <p className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">
                                         <span className="font-medium text-slate-700">
                                           {[s.desa, s.kecamatan, s.kabupaten].filter(Boolean).map(x => x!.trim()).join(', ') || s.alamat || s.asal || '-'}

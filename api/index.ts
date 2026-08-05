@@ -467,25 +467,46 @@ function deleteFileByUrlOrPath(fileUrlOrPath: string) {
   }
 }
 
+function collectFileUrls(obj: any, urls = new Set<string>()): Set<string> {
+  if (!obj) return urls;
+  if (typeof obj === 'string') {
+    let s = obj.trim();
+    if (s.includes('/uploads/') || s.includes('/api/uploads/')) {
+      urls.add(s);
+    }
+    if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))) {
+      try {
+        const parsed = JSON.parse(s);
+        collectFileUrls(parsed, urls);
+      } catch (e) {}
+    }
+  } else if (Array.isArray(obj)) {
+    for (const item of obj) {
+      collectFileUrls(item, urls);
+    }
+  } else if (typeof obj === 'object') {
+    for (const key of Object.keys(obj)) {
+      collectFileUrls(obj[key], urls);
+    }
+  }
+  return urls;
+}
+
 function extractAndCleanFilesFromRecord(record: any) {
   if (!record || typeof record !== 'object') return;
-  for (const key of Object.keys(record)) {
-    const val = record[key];
-    if (typeof val === 'string' && (val.includes('/uploads/') || val.includes('/api/uploads/'))) {
-      deleteFileByUrlOrPath(val);
-    }
+  const urls = collectFileUrls(record);
+  for (const url of urls) {
+    deleteFileByUrlOrPath(url);
   }
 }
 
 function cleanupReplacedFiles(oldRecord: any, newRecord: any) {
   if (!oldRecord || !newRecord) return;
-  for (const key of Object.keys(oldRecord)) {
-    const oldVal = oldRecord[key];
-    const newVal = newRecord[key];
-    if (typeof oldVal === 'string' && (oldVal.includes('/uploads/') || oldVal.includes('/api/uploads/'))) {
-      if (oldVal !== newVal) {
-        deleteFileByUrlOrPath(oldVal);
-      }
+  const oldUrls = collectFileUrls(oldRecord);
+  const newUrls = collectFileUrls(newRecord);
+  for (const url of oldUrls) {
+    if (!newUrls.has(url)) {
+      deleteFileByUrlOrPath(url);
     }
   }
 }

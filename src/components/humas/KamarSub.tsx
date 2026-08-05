@@ -776,7 +776,8 @@ export default function KamarSub({
   // Students eligible to be added to room / lemari
   const eligibleStudentsForAdd = santriList.filter(s => {
     if (s.gender !== selectedGender) return false;
-    if (s.statusKeanggotaan === 'Alumni') return false;
+    const statusKg = (s.statusKeanggotaan || (s as any).status || 'Aktif').trim().toLowerCase();
+    if (statusKg !== 'aktif') return false;
 
     // If targetSlotForAdd is set, exclude students who are ALREADY in targetSlotForAdd in this active room
     if (activeRoomForDetail && targetSlotForAdd) {
@@ -1732,55 +1733,7 @@ export default function KamarSub({
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 {/* Search & Action Controls */}
                 <div className="flex flex-wrap items-center gap-2 flex-1">
-                  {/* Tombol Acak Santri + Dropdown v */}
-                  {canWriteCurrent && (
-                    <div className="relative inline-flex items-center rounded-xl border border-slate-200 bg-white shadow-3xs shrink-0">
-                      <button
-                        onClick={handleAcakSantri}
-                        className="p-2 hover:bg-slate-50 text-slate-700 transition-all cursor-pointer rounded-l-xl flex items-center justify-center border-r border-slate-100"
-                        title="Acak Santri ke Lemari"
-                      >
-                        <Shuffle className="w-4 h-4 text-purple-600" />
-                      </button>
-                      <button
-                        onClick={() => setIsAcakDropdownOpen(prev => !prev)}
-                        className="px-2 py-2 hover:bg-slate-50 text-slate-500 hover:text-slate-700 transition-all cursor-pointer rounded-r-xl flex items-center justify-center"
-                        title="Pengaturan Acak Lemari"
-                      >
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isAcakDropdownOpen ? 'rotate-180 text-purple-600' : ''}`} />
-                      </button>
 
-                      {/* Dropdown Menu Pengaturan Acak */}
-                      {isAcakDropdownOpen && (
-                        <div className="absolute left-0 top-full mt-1.5 w-56 bg-white rounded-2xl border border-slate-200 shadow-xl p-1.5 z-30 space-y-0.5 animate-fade-in">
-                          <div className="px-2.5 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
-                            Pengaturan Acak Santri
-                          </div>
-                          <button
-                            onClick={handleAcakSantri}
-                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2 cursor-pointer transition-colors"
-                          >
-                            <Shuffle className="w-3.5 h-3.5 text-purple-600" />
-                            <span>Acak Semua Lemari</span>
-                          </button>
-                          <button
-                            onClick={handleAcakLemariKosong}
-                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2 cursor-pointer transition-colors"
-                          >
-                            <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Acak Santri Tanpa Lemari</span>
-                          </button>
-                          <button
-                            onClick={handleKosongkanSemuaLemari}
-                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer transition-colors border-t border-slate-100 mt-1 pt-2"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                            <span>Kosongkan Semua Lemari</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   {/* Search Bar */}
                   <div className="relative flex-1 min-w-[180px]">
@@ -1957,9 +1910,9 @@ export default function KamarSub({
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2 pt-1">
-                          {unassignedMembers.map(s => (
+                          {unassignedMembers.map((s, idx) => (
                             <div
-                              key={s.id}
+                              key={`unassigned-${s.id}-${idx}`}
                               draggable={canWriteCurrent}
                               onDragStart={(e) => {
                                 setDraggedStudentId(s.id);
@@ -2673,7 +2626,16 @@ export default function KamarSub({
                                           <div className="flex items-center gap-3 min-w-0">
                                             {renderSantriAvatar(s, "w-8 h-8 rounded-full border border-slate-200 text-xs font-bold shrink-0")}
                                             <div className="min-w-0">
-                                              <p className="text-xs font-extrabold text-slate-800 truncate">{s.nama}</p>
+                                              <p
+                                                className="text-xs font-extrabold text-slate-800 truncate cursor-pointer hover:text-purple-700 hover:underline"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setSelectedSantriForDetail(s);
+                                                }}
+                                                title="Klik untuk melihat detail santri"
+                                              >
+                                                {s.nama}
+                                              </p>
                                               <p className="text-[10px] text-slate-500 truncate" dangerouslySetInnerHTML={{ __html: subtitleText }} />
                                             </div>
                                           </div>
