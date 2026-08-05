@@ -175,6 +175,19 @@ export default function DataAkademikSub({
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState(false);
 
+  // Lock background body scroll when modal is open
+  useEffect(() => {
+    const isModalOpen = isEditModalOpen || isExportModalOpen || !!selectedSantri || !!transferStudent;
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isEditModalOpen, isExportModalOpen, selectedSantri, transferStudent]);
+
   // Horizontal Scroll Navigation state and refs
   const containerRef = React.useRef<HTMLDivElement>(null);
   const floatingHeaderRef = React.useRef<HTMLDivElement>(null);

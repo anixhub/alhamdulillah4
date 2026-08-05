@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -521,6 +521,19 @@ export default function LembagaKelasSub({
     }
   }, [genderFilter]);
 
+  // Lock background body scroll when any modal is open
+  useEffect(() => {
+    const isModalOpen = isAddMemberModalOpen || isLembagaModalOpen || isKelasModalOpen || confirmRemoveOpen || !!selectedSantriForDetail || !!transferStudent;
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isAddMemberModalOpen, isLembagaModalOpen, isKelasModalOpen, confirmRemoveOpen, selectedSantriForDetail, transferStudent]);
+
   useEffect(() => {
     setLogoError(false);
   }, [lemLogo]);
@@ -849,7 +862,7 @@ export default function LembagaKelasSub({
   };
 
   // --- Dynamic Unified Institutions Builder ---
-  const getCurrentInstitutions = () => {
+  const institutions = useMemo(() => {
     if (activeTab === 'Rombel') {
       return categoriesList.map(c => {
         const groups = groupsList.filter(g => g.kategoriId === c.id);
@@ -894,12 +907,10 @@ export default function LembagaKelasSub({
         };
       });
     }
-  };
-
-  const institutions = getCurrentInstitutions();
+  }, [activeTab, categoriesList, groupsList, assignmentsList, santriList, selectedGender, filteredLembagas, kelasList]);
 
   // --- Dynamic Unified Classes Builder ---
-  const getSubClassesOfSelected = () => {
+  const subClasses = useMemo(() => {
     if (!selectedLembaga) return [];
     if (activeTab === 'Rombel') {
       return groupsList
@@ -915,12 +926,10 @@ export default function LembagaKelasSub({
     } else {
       return getClassesOfLembaga(selectedLembaga.id);
     }
-  };
-
-  const subClasses = getSubClassesOfSelected();
+  }, [selectedLembaga, activeTab, groupsList, kelasList]);
 
   // --- Dynamic Unified Students Getter ---
-  const getStudentsInSelectedClass = () => {
+  const currentClassStudents = useMemo(() => {
     if (!selectedKelas) return [];
     if (activeTab === 'Rombel') {
       const assignedIds = assignmentsList
@@ -930,87 +939,89 @@ export default function LembagaKelasSub({
     } else {
       return getStudentsInClass(selectedKelas, selectedLembaga);
     }
-  };
-
-  const currentClassStudents = getStudentsInSelectedClass();
+  }, [selectedKelas, selectedLembaga, activeTab, assignmentsList, santriList, selectedGender, kelasList]);
 
   // Filtered students by search query and status filter
-  const searchedStudents = currentClassStudents.filter(s => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch = (
-      (s.nama || '').toLowerCase().includes(q) ||
-      (s.nik && s.nik.toLowerCase().includes(q)) ||
-      (s.nis && s.nis.toLowerCase().includes(q)) ||
-      (s.nisn && s.nisn.toLowerCase().includes(q)) ||
-      (s.nism && s.nism.toLowerCase().includes(q))
-    );
+  const searchedStudents = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return currentClassStudents.filter(s => {
+      const matchesSearch = !q || (
+        (s.nama || '').toLowerCase().includes(q) ||
+        (s.nik && s.nik.toLowerCase().includes(q)) ||
+        (s.nis && s.nis.toLowerCase().includes(q)) ||
+        (s.nisn && s.nisn.toLowerCase().includes(q)) ||
+        (s.nism && s.nism.toLowerCase().includes(q))
+      );
 
-    if (!matchesSearch) return false;
+      if (!matchesSearch) return false;
 
-    // Apply status filter
-    if (statusFilter && statusFilter !== 'Semua') {
-      const isCP = !!(selectedKelas && isDefaultClass(selectedKelas));
-      if (isCP) {
-        // Status EMIS filter: 'Terdaftar' or 'Belum'
-        const isTerdaftar = isEmisTerdaftar(s.statusEmis);
-        if (statusFilter === 'Terdaftar') {
-          return isTerdaftar;
-        } else if (statusFilter === 'Belum') {
-          return !isTerdaftar;
-        }
-      } else {
-        // Status Verval filter: 'Sukses' or 'Proses'
-        const currentVerval = s.statusVerval || (s.nisn && s.nisn.trim() !== '' ? 'Sukses' : 'Proses');
-        if (statusFilter === 'Sukses') {
-          return currentVerval === 'Sukses';
-        } else if (statusFilter === 'Proses') {
-          return currentVerval === 'Proses';
+      // Apply status filter
+      if (statusFilter && statusFilter !== 'Semua') {
+        const isCP = !!(selectedKelas && isDefaultClass(selectedKelas));
+        if (isCP) {
+          // Status EMIS filter: 'Terdaftar' or 'Belum'
+          const isTerdaftar = isEmisTerdaftar(s.statusEmis);
+          if (statusFilter === 'Terdaftar') {
+            return isTerdaftar;
+          } else if (statusFilter === 'Belum') {
+            return !isTerdaftar;
+          }
+        } else {
+          // Status Verval filter: 'Sukses' or 'Proses'
+          const currentVerval = s.statusVerval || (s.nisn && s.nisn.trim() !== '' ? 'Sukses' : 'Proses');
+          if (statusFilter === 'Sukses') {
+            return currentVerval === 'Sukses';
+          } else if (statusFilter === 'Proses') {
+            return currentVerval === 'Proses';
+          }
         }
       }
-    }
 
-    return true;
-  });
+      return true;
+    });
+  }, [currentClassStudents, searchQuery, statusFilter, selectedKelas]);
 
   // Sort and filter students
-  const filteredStudents = [...searchedStudents].sort((a, b) => {
-    if (!sortField) return 0;
-    
-    let valA = a[sortField] || '';
-    let valB = b[sortField] || '';
-    
-    if (sortField === 'nik') {
-      valA = a.nik || '';
-      valB = b.nik || '';
-    } else if (sortField === 'statusKeanggotaan') {
-      valA = a.statusKeanggotaan || '';
-      valB = b.statusKeanggotaan || '';
-    } else if (sortField === 'statusEmis') {
-      valA = a.statusEmis || 'Belum';
-      valB = b.statusEmis || 'Belum';
-    } else if (sortField === 'statusVerval') {
-      const isNisnValidA = !!(a.nisn && a.nisn.trim() !== '');
-      const isNisnValidB = !!(b.nisn && b.nisn.trim() !== '');
-      valA = a.statusVerval || (isNisnValidA ? 'Sukses' : 'Proses');
-      valB = b.statusVerval || (isNisnValidB ? 'Sukses' : 'Proses');
-    } else if (sortField === 'kamar') {
-      valA = a.kamar || '-';
-      valB = b.kamar || '-';
-    }
+  const filteredStudents = useMemo(() => {
+    return [...searchedStudents].sort((a, b) => {
+      if (!sortField) return 0;
+      
+      let valA = a[sortField] || '';
+      let valB = b[sortField] || '';
+      
+      if (sortField === 'nik') {
+        valA = a.nik || '';
+        valB = b.nik || '';
+      } else if (sortField === 'statusKeanggotaan') {
+        valA = a.statusKeanggotaan || '';
+        valB = b.statusKeanggotaan || '';
+      } else if (sortField === 'statusEmis') {
+        valA = a.statusEmis || 'Belum';
+        valB = b.statusEmis || 'Belum';
+      } else if (sortField === 'statusVerval') {
+        const isNisnValidA = !!(a.nisn && a.nisn.trim() !== '');
+        const isNisnValidB = !!(b.nisn && b.nisn.trim() !== '');
+        valA = a.statusVerval || (isNisnValidA ? 'Sukses' : 'Proses');
+        valB = b.statusVerval || (isNisnValidB ? 'Sukses' : 'Proses');
+      } else if (sortField === 'kamar') {
+        valA = a.kamar || '-';
+        valB = b.kamar || '-';
+      }
 
-    if (typeof valA === 'string' && typeof valB === 'string') {
-      return sortDirection === 'asc'
-        ? valA.localeCompare(valB, 'id', { sensitivity: 'base', numeric: true })
-        : valB.localeCompare(valA, 'id', { sensitivity: 'base', numeric: true });
-    }
-    
-    return 0;
-  });
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        return sortDirection === 'asc'
+          ? valA.localeCompare(valB, 'id', { sensitivity: 'base', numeric: true })
+          : valB.localeCompare(valA, 'id', { sensitivity: 'base', numeric: true });
+      }
+      
+      return 0;
+    });
+  }, [searchedStudents, sortField, sortDirection]);
 
   // --- Automatical Selection of Topmost Class ---
   useEffect(() => {
     if (selectedLembaga) {
-      const classes = getSubClassesOfSelected();
+      const classes = subClasses;
       if (classes.length > 0) {
         // Find if selectedKelas is already in this new list, otherwise fallback to the first
         const stillExists = classes.find(c => c.id === selectedKelas?.id);
@@ -1504,8 +1515,11 @@ export default function LembagaKelasSub({
     return { key: 'Belum', label: 'Belum Tergabung' };
   };
 
-  const formalSectionsMap: { [key: string]: string } = {};
-  if (activeTab !== 'Rombel' && activeTab !== 'Internal') {
+  const isAktif = (s: Santri) => (s.statusKeanggotaan || 'Aktif') === 'Aktif';
+
+  const formalSectionsMap = useMemo<{ [key: string]: string }>(() => {
+    if (!isAddMemberModalOpen || activeTab === 'Rombel' || activeTab === 'Internal') return {};
+    const map: { [key: string]: string } = {};
     const matchingLembagas = lembagasList.filter(l => getLembagaJenis(l) === 'Formal' && isGenderMatch(l.gender, selectedGender));
     matchingLembagas.forEach(l => {
       const classes = getClassesOfLembaga(l.id);
@@ -1516,68 +1530,114 @@ export default function LembagaKelasSub({
         }
         const key = `${l.id}:${c.id}`;
         const label = `${kodeBadge} ${c.nama}`;
-        formalSectionsMap[key] = label;
+        map[key] = label;
       });
     });
-  }
+    return map;
+  }, [isAddMemberModalOpen, activeTab, lembagasList, selectedGender, selectedLembaga, selectedKelas, kelasList]);
 
-  const eligibleStudents = getEligibleStudentsForAdd();
-
-  // Unselected eligible students (for left column)
-  const unselectedEligibleStudents = eligibleStudents.filter(
-    s => !selectedModalStudentIds.includes(s.id)
-  );
-
-  const availableKamarsInEligible = Array.from(
-    new Set(unselectedEligibleStudents.map(s => s.kamar).filter((k): k is string => !!k && k.trim() !== '' && k !== '-'))
-  ).sort();
-
-  const targetLembagaClasses = selectedLembaga 
-    ? getClassesOfLembaga(selectedLembaga.id).filter(c => c.id !== selectedKelas?.id)
-    : [];
-
-  const classStudentSets: { [classId: string]: Set<string> } = {};
-  if (selectedLembaga && activeTab !== 'Rombel') {
-    targetLembagaClasses.forEach(c => {
-      classStudentSets[c.id] = new Set(getStudentsInClass(c, selectedLembaga).map(s => s.id));
-    });
-  }
-
-  const searchedEligibleStudents = unselectedEligibleStudents.filter(s => {
-    const q = addMemberSearch.toLowerCase();
+  // Fast precomputed map for formal section lookup when modal is open
+  const studentFormalSectionMap = useMemo(() => {
+    if (!isAddMemberModalOpen || activeTab === 'Rombel' || activeTab === 'Internal') return new Map<string, { key: string; label: string }>();
     
-    let belongingName = '';
+    const map = new Map<string, { key: string; label: string }>();
+    const matchingLembagas = lembagasList.filter(l => getLembagaJenis(l) === 'Formal' && isGenderMatch(l.gender, selectedGender));
+    
+    santriList.forEach(s => {
+      if (!isGenderMatch(s.gender, selectedGender)) return;
+      const l = matchingLembagas.find(lem => isStudentInLembaga(s, lem));
+      if (!l) {
+        map.set(s.id, { key: 'Belum', label: 'Belum Tergabung' });
+        return;
+      }
+
+      const classes = getClassesOfLembaga(l.id);
+      const getKodeBadge = (lem: Lembaga) => `[${(lem.kode || generate4LetterKode(lem.nama)).toUpperCase().slice(0, 4)}]`;
+
+      const c = classes.find(cls => {
+        const students = getStudentsInClass(cls, l);
+        return students.some(st => st.id === s.id);
+      });
+
+      if (c) {
+        map.set(s.id, { key: `${l.id}:${c.id}`, label: `${getKodeBadge(l)} ${c.nama}` });
+      } else {
+        const defaultC = classes.find(isDefaultClass) || classes[0];
+        if (defaultC) {
+          map.set(s.id, { key: `${l.id}:${defaultC.id}`, label: `${getKodeBadge(l)} ${defaultC.nama}` });
+        } else {
+          map.set(s.id, { key: 'Belum', label: 'Belum Tergabung' });
+        }
+      }
+    });
+
+    return map;
+  }, [isAddMemberModalOpen, activeTab, lembagasList, selectedGender, kelasList, santriList]);
+
+  const eligibleStudents = useMemo(() => {
+    if (!isAddMemberModalOpen || !selectedKelas) return [];
+
+    let currentClassStudentIds: string[] = [];
     if (activeTab === 'Rombel') {
-      const catId = selectedLembaga?.id || (selectedKelas ? groupsList.find(g => g.id === selectedKelas.id)?.kategoriId : undefined);
-      const ass = assignmentsList.find(a => 
-        a.santriId === s.id && 
-        (
-          (catId && a.kategoriId === catId) || 
-          groupsList.some(g => g.id === a.kelompokId && g.kategoriId === catId)
-        )
-      );
-      belongingName = ass ? (groupsList.find(g => g.id === ass.kelompokId)?.nama || '') : '';
-    } else if (activeTab === 'Internal') {
-      const foundClass = targetLembagaClasses.find(c => classStudentSets[c.id]?.has(s.id));
-      belongingName = foundClass ? foundClass.nama : '';
+      currentClassStudentIds = assignmentsList
+        .filter(a => a.kelompokId === selectedKelas.id)
+        .map(a => a.santriId);
     } else {
-      const secInfo = getFormalSectionForStudent(s);
-      belongingName = secInfo.label;
+      currentClassStudentIds = selectedLembaga ? getStudentsInClass(selectedKelas, selectedLembaga).map(s => s.id) : [];
     }
 
-    const matchesSearch = (
-      (s.nama || '').toLowerCase().includes(q) ||
-      (s.desa && s.desa.toLowerCase().includes(q)) ||
-      (s.kecamatan && s.kecamatan.toLowerCase().includes(q)) ||
-      (s.kabupaten && s.kabupaten.toLowerCase().includes(q)) ||
-      (s.alamat && s.alamat.toLowerCase().includes(q)) ||
-      (s.asal && s.asal.toLowerCase().includes(q)) ||
-      (belongingName && belongingName.toLowerCase().includes(q))
-    );
+    const currentClassSet = new Set(currentClassStudentIds);
+    const isFormalLembaga = selectedLembaga ? getLembagaJenis(selectedLembaga) === 'Formal' : activeTab === 'Formal';
+    const isCalonClass = isDefaultClass(selectedKelas);
 
-    if (!matchesSearch) return false;
+    return santriList.filter(s => {
+      if (!isGenderMatch(s.gender, selectedGender)) return false;
+      
+      if (isFormalLembaga) {
+        if (s.statusKeanggotaan === 'Meninggal') return false;
+      } else {
+        if (!isAktif(s)) return false;
+      }
 
-    if (addMemberGroupFilter && addMemberGroupFilter !== 'Semua') {
+      if (currentClassSet.has(s.id)) return false;
+
+      if (activeTab !== 'Rombel' && isFormalLembaga && !isCalonClass) {
+        if (!isEmisTerdaftar(s.statusEmis)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [isAddMemberModalOpen, selectedKelas, selectedLembaga, activeTab, selectedGender, assignmentsList, santriList, lembagasList, kelasList]);
+
+  // Unselected eligible students (for left column)
+  const unselectedEligibleStudents = useMemo(() => {
+    if (!isAddMemberModalOpen) return [];
+    const selectedSet = new Set(selectedModalStudentIds);
+    return eligibleStudents.filter(s => !selectedSet.has(s.id));
+  }, [isAddMemberModalOpen, eligibleStudents, selectedModalStudentIds]);
+
+  const targetLembagaClasses = useMemo(() => {
+    if (!isAddMemberModalOpen || !selectedLembaga) return [];
+    return getClassesOfLembaga(selectedLembaga.id).filter(c => c.id !== selectedKelas?.id);
+  }, [isAddMemberModalOpen, selectedLembaga, kelasList, selectedKelas]);
+
+  const classStudentSets = useMemo<{ [classId: string]: Set<string> }>(() => {
+    if (!isAddMemberModalOpen || !selectedLembaga || activeTab === 'Rombel') return {};
+    const sets: { [classId: string]: Set<string> } = {};
+    targetLembagaClasses.forEach(c => {
+      sets[c.id] = new Set(getStudentsInClass(c, selectedLembaga).map(s => s.id));
+    });
+    return sets;
+  }, [isAddMemberModalOpen, selectedLembaga, activeTab, targetLembagaClasses, santriList, selectedGender]);
+
+  const searchedEligibleStudents = useMemo(() => {
+    if (!isAddMemberModalOpen) return [];
+    const q = addMemberSearch.trim().toLowerCase();
+    
+    return unselectedEligibleStudents.filter(s => {
+      let belongingName = '';
       if (activeTab === 'Rombel') {
         const catId = selectedLembaga?.id || (selectedKelas ? groupsList.find(g => g.id === selectedKelas.id)?.kategoriId : undefined);
         const ass = assignmentsList.find(a => 
@@ -1587,35 +1647,70 @@ export default function LembagaKelasSub({
             groupsList.some(g => g.id === a.kelompokId && g.kategoriId === catId)
           )
         );
-        if (addMemberGroupFilter === 'Belum') {
-          if (ass) return false;
-        } else {
-          if (!ass || ass.kelompokId !== addMemberGroupFilter) return false;
-        }
+        belongingName = ass ? (groupsList.find(g => g.id === ass.kelompokId)?.nama || '') : '';
       } else if (activeTab === 'Internal') {
         const foundClass = targetLembagaClasses.find(c => classStudentSets[c.id]?.has(s.id));
-        if (addMemberGroupFilter === 'Belum') {
-          if (foundClass) return false;
-        } else {
-          if (!foundClass || foundClass.id !== addMemberGroupFilter) return false;
-        }
+        belongingName = foundClass ? foundClass.nama : '';
       } else {
-        const secInfo = getFormalSectionForStudent(s);
-        if (addMemberGroupFilter === 'Belum') {
-          if (secInfo.key !== 'Belum') return false;
+        const secInfo = studentFormalSectionMap.get(s.id) || getFormalSectionForStudent(s);
+        belongingName = secInfo.label;
+      }
+
+      if (q) {
+        const matchesSearch = (
+          (s.nama || '').toLowerCase().includes(q) ||
+          (s.desa && s.desa.toLowerCase().includes(q)) ||
+          (s.kecamatan && s.kecamatan.toLowerCase().includes(q)) ||
+          (s.kabupaten && s.kabupaten.toLowerCase().includes(q)) ||
+          (s.alamat && s.alamat.toLowerCase().includes(q)) ||
+          (s.asal && s.asal.toLowerCase().includes(q)) ||
+          (belongingName && belongingName.toLowerCase().includes(q))
+        );
+        if (!matchesSearch) return false;
+      }
+
+      if (addMemberGroupFilter && addMemberGroupFilter !== 'Semua') {
+        if (activeTab === 'Rombel') {
+          const catId = selectedLembaga?.id || (selectedKelas ? groupsList.find(g => g.id === selectedKelas.id)?.kategoriId : undefined);
+          const ass = assignmentsList.find(a => 
+            a.santriId === s.id && 
+            (
+              (catId && a.kategoriId === catId) || 
+              groupsList.some(g => g.id === a.kelompokId && g.kategoriId === catId)
+            )
+          );
+          if (addMemberGroupFilter === 'Belum') {
+            if (ass) return false;
+          } else {
+            if (!ass || ass.kelompokId !== addMemberGroupFilter) return false;
+          }
+        } else if (activeTab === 'Internal') {
+          const foundClass = targetLembagaClasses.find(c => classStudentSets[c.id]?.has(s.id));
+          if (addMemberGroupFilter === 'Belum') {
+            if (foundClass) return false;
+          } else {
+            if (!foundClass || foundClass.id !== addMemberGroupFilter) return false;
+          }
         } else {
-          if (secInfo.key !== addMemberGroupFilter) return false;
+          const secInfo = studentFormalSectionMap.get(s.id) || getFormalSectionForStudent(s);
+          if (addMemberGroupFilter === 'Belum') {
+            if (secInfo.key !== 'Belum') return false;
+          } else {
+            if (secInfo.key !== addMemberGroupFilter) return false;
+          }
         }
       }
-    }
 
-    return true;
-  });
+      return true;
+    });
+  }, [isAddMemberModalOpen, unselectedEligibleStudents, addMemberSearch, addMemberGroupFilter, activeTab, selectedLembaga, selectedKelas, groupsList, assignmentsList, targetLembagaClasses, classStudentSets, studentFormalSectionMap]);
 
   // Selected students in modal (for right column)
-  const selectedStudentsForModal = santriList.filter(s => 
-    selectedModalStudentIds.includes(s.id)
-  );
+  const selectedStudentsForModal = useMemo(() => {
+    if (!isAddMemberModalOpen) return [];
+    const selectedSet = new Set(selectedModalStudentIds);
+    return santriList.filter(s => selectedSet.has(s.id));
+  }, [isAddMemberModalOpen, selectedModalStudentIds, santriList]);
 
   const handleConfirmAddMembers = () => {
     if (!selectedKelas || selectedModalStudentIds.length === 0) return;
@@ -3818,15 +3913,15 @@ export default function LembagaKelasSub({
       {/* D. TAMBAH ANGGOTA / MULTI ADD MEMBER MODAL */}
       <AnimatePresence>
         {isAddMemberModalOpen && selectedKelas && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs animate-fade-in">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-3 sm:p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.96 }}
-              className="bg-white rounded-2xl border border-slate-200/80 shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[85vh]"
+              className="bg-white rounded-2xl border border-slate-200/80 shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[90vh] my-auto min-h-0"
             >
               {/* Header */}
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+              <div className="px-5 sm:px-6 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100">
                     <UserPlus className="h-4 w-4" />
@@ -3857,10 +3952,10 @@ export default function LembagaKelasSub({
               </div>
 
               {/* Content: Split into 2 columns */}
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 min-h-[380px] max-h-[500px] overflow-hidden divide-y md:divide-y-0 md:divide-x divide-slate-100">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 min-h-[380px] max-h-[520px] min-h-0 overflow-hidden divide-y md:divide-y-0 md:divide-x divide-slate-100">
                 
                 {/* LEFT COLUMN: ELIGIBLE SANTRI */}
-                <div className="flex flex-col h-full overflow-hidden bg-white">
+                <div className="flex flex-col h-full min-h-0 overflow-hidden bg-white">
                   {/* Left Header & Search */}
                   <div className="px-3 py-2 border-b border-slate-100 space-y-2 bg-slate-50/30 shrink-0">
                     <div className="flex items-center justify-between">
@@ -4017,7 +4112,7 @@ export default function LembagaKelasSub({
                         });
 
                         searchedEligibleStudents.forEach(s => {
-                          const secInfo = getFormalSectionForStudent(s);
+                          const secInfo = studentFormalSectionMap.get(s.id) || getFormalSectionForStudent(s);
                           if (sectionsMap[secInfo.key]) {
                             sectionsMap[secInfo.key].students.push(s);
                           } else {
