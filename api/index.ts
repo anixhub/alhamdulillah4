@@ -94,15 +94,23 @@ app.use((req, res, next) => {
 // Enable JSON parsing with a 10MB limit for compressed base64 photos
 app.use(express.json({ limit: "10mb" }));
 
-// Upload Directory Helper (UPLOAD_DIR env variable with fallback to path.join(__dirname, 'public/uploads'))
+// Upload Directory Helper (UPLOAD_DIR env variable with fallback to Hostinger storage/uploads or public/uploads)
 const getUploadDir = (): string => {
   if (process.env.UPLOAD_DIR && process.env.UPLOAD_DIR.trim() !== '') {
     return process.env.UPLOAD_DIR;
   }
+  const hostingerPath = '/home/u648273511/domains/attaroqqy.com/storage/uploads';
   try {
-    return path.join(__dirname, 'public', 'uploads');
+    if (!fs.existsSync(hostingerPath)) {
+      fs.mkdirSync(hostingerPath, { recursive: true });
+    }
+    return hostingerPath;
   } catch (e) {
-    return path.join(process.cwd(), 'public', 'uploads');
+    try {
+      return path.join(__dirname, 'public', 'uploads');
+    } catch (err) {
+      return path.join(process.cwd(), 'public', 'uploads');
+    }
   }
 };
 console.log(">>> UPLOAD_DIR terdeteksi sebagai:", getUploadDir());
@@ -431,6 +439,70 @@ app.get("/api/uploads/:category/:fileName", (req, res) => {
   }
 });
 
+// File Storage Cleanup Helpers & Explicit Delete Endpoint
+function deleteFileByUrlOrPath(fileUrlOrPath: string) {
+  if (!fileUrlOrPath || typeof fileUrlOrPath !== 'string') return;
+  try {
+    let cleanPath = fileUrlOrPath.trim();
+    if (cleanPath.startsWith('/api/uploads/')) {
+      cleanPath = cleanPath.replace('/api/uploads/', '');
+    } else if (cleanPath.startsWith('/uploads/')) {
+      cleanPath = cleanPath.replace('/uploads/', '');
+    } else if (cleanPath.includes('/uploads/')) {
+      const idx = cleanPath.indexOf('/uploads/');
+      cleanPath = cleanPath.substring(idx + 9);
+    }
+
+    const uploadBase = getUploadDir();
+    const fullPath = path.join(uploadBase, cleanPath);
+    
+    const resolvedUploadBase = path.resolve(uploadBase);
+    const resolvedFullPath = path.resolve(fullPath);
+    if (resolvedFullPath.startsWith(resolvedUploadBase) && fs.existsSync(resolvedFullPath)) {
+      fs.unlinkSync(resolvedFullPath);
+      console.log(">>> Berhasil auto-delete file dari storage:", resolvedFullPath);
+    }
+  } catch (err: any) {
+    console.warn("Gagal auto-delete file dari storage:", err.message);
+  }
+}
+
+function extractAndCleanFilesFromRecord(record: any) {
+  if (!record || typeof record !== 'object') return;
+  for (const key of Object.keys(record)) {
+    const val = record[key];
+    if (typeof val === 'string' && (val.includes('/uploads/') || val.includes('/api/uploads/'))) {
+      deleteFileByUrlOrPath(val);
+    }
+  }
+}
+
+function cleanupReplacedFiles(oldRecord: any, newRecord: any) {
+  if (!oldRecord || !newRecord) return;
+  for (const key of Object.keys(oldRecord)) {
+    const oldVal = oldRecord[key];
+    const newVal = newRecord[key];
+    if (typeof oldVal === 'string' && (oldVal.includes('/uploads/') || oldVal.includes('/api/uploads/'))) {
+      if (oldVal !== newVal) {
+        deleteFileByUrlOrPath(oldVal);
+      }
+    }
+  }
+}
+
+app.post("/api/delete-file", async (req, res) => {
+  try {
+    const { fileUrl } = req.body;
+    if (!fileUrl) {
+      return res.status(400).json({ success: false, error: "fileUrl is required" });
+    }
+    deleteFileByUrlOrPath(fileUrl);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // -------------------------------------------------------------
 // 5. Generic DB Table Operations & Realtime Broadcasting
 // -------------------------------------------------------------
@@ -695,6 +767,19 @@ app.post("/api/db/:table", async (req, res) => {
         if (!row.id) {
           row.id = String(Date.now()) + Math.random().toString(36).substring(2, 7);
         }
+        let existingRow: any = null;
+        try {
+          const [eRows]: any = await pool.query(`SELECT * FROM \`${table}\` WHERE \`id\` = ? LIMIT 1`, [row.id]);
+          if (eRows?.[0]) existingRow = eRows[0];
+        } catch (e) {}
+        if (!existingRow) {
+          const list = memoryStore.get(table) || [];
+          existingRow = list.find((item: any) => item.id === row.id);
+        }
+        if (existingRow) {
+          cleanupReplacedFiles(existingRow, row);
+        }
+
         let keys = Object.keys(row);
         if (existingColumns) {
           keys = keys.filter(k => existingColumns.has(k));
@@ -769,6 +854,21 @@ app.put("/api/db/:table/:id", async (req, res) => {
   let updatedResult: any = { id, ...sanitizedBody };
 
   const pool = getMySQLPool();
+  let existingOldRecord: any = null;
+  if (pool) {
+    try {
+      const [rows]: any = await pool.query(`SELECT * FROM \`${table}\` WHERE \`id\` = ? LIMIT 1`, [id]);
+      if (rows?.[0]) existingOldRecord = rows[0];
+    } catch (e) {}
+  }
+  if (!existingOldRecord) {
+    const list = memoryStore.get(table) || [];
+    existingOldRecord = list.find((item: any) => item.id === id);
+  }
+  if (existingOldRecord) {
+    cleanupReplacedFiles(existingOldRecord, { id, ...sanitizedBody });
+  }
+
   if (pool) {
     try {
       const existingColumns = await getTableColumns(table, pool);
@@ -830,11 +930,13 @@ app.delete("/api/db/:table/:id", async (req, res) => {
   }
 
   const pool = getMySQLPool();
+  let existingRecordToDelete: any = null;
   if (pool) {
     try {
       if (table === "santri") {
-        const [sRows]: any = await pool.query("SELECT `nama` FROM `santri` WHERE `id` = ? LIMIT 1", [id]);
-        const santriNama = sRows?.[0]?.nama;
+        const [sRows]: any = await pool.query("SELECT * FROM `santri` WHERE `id` = ? LIMIT 1", [id]);
+        if (sRows?.[0]) existingRecordToDelete = sRows[0];
+        const santriNama = existingRecordToDelete?.nama;
 
         await pool.query("DELETE FROM `rombel_assignment` WHERE `santri_id` = ?", [id]);
         if (santriNama) {
@@ -845,8 +947,22 @@ app.delete("/api/db/:table/:id", async (req, res) => {
           await pool.query("DELETE FROM `perizinan` WHERE `santri_id` = ?", [id]);
           await pool.query("DELETE FROM `keamanan` WHERE `santri_id` = ?", [id]);
         }
+      } else {
+        const [rows]: any = await pool.query(`SELECT * FROM \`${table}\` WHERE \`id\` = ? LIMIT 1`, [id]);
+        if (rows?.[0]) existingRecordToDelete = rows[0];
       }
+    } catch (e) {}
+  }
+  if (!existingRecordToDelete) {
+    const list = memoryStore.get(table) || [];
+    existingRecordToDelete = list.find((item: any) => item.id === id);
+  }
+  if (existingRecordToDelete) {
+    extractAndCleanFilesFromRecord(existingRecordToDelete);
+  }
 
+  if (pool) {
+    try {
       await pool.query(`DELETE FROM \`${table}\` WHERE \`id\` = ?`, [id]);
     } catch (err: any) {
       console.warn(`MySQL DELETE /api/db/${table}/${id} error:`, err.message);

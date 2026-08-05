@@ -508,3 +508,18 @@ export async function uploadFileToStorage(base64DataUrl: string, originalName: s
 
   throw new Error("Gagal mengunggah file ke server fisik.");
 }
+
+export async function deleteFileFromStorage(fileUrl: string): Promise<boolean> {
+  if (!fileUrl || !fileUrl.includes('/uploads/')) return false;
+  try {
+    const res = await fetch(getApiUrl("/api/delete-file"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileUrl })
+    });
+    const data = await safeJsonParse(res);
+    return Boolean(data && data.success);
+  } catch (e) {
+    return false;
+  }
+}
