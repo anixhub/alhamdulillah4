@@ -663,6 +663,7 @@ export default function LembagaKelasSub({
   // Helper: Determine if a student belongs to a given institution
   const isStudentInLembaga = (s: Santri, l: Lembaga): boolean => {
     if (!s || !l) return false;
+    if (s.statusKeanggotaan === 'Meninggal') return false;
     
     const norm = (str?: string | null) => (str || '').trim().toLowerCase().replace(/[-_]/g, ' ');
 
@@ -1448,7 +1449,15 @@ export default function LembagaKelasSub({
 
     return santriList.filter(s => {
       if (!isGenderMatch(s.gender, selectedGender)) return false;
-      if (!isAktif(s)) return false;
+      
+      // Khusus pendidikan formal: bisa memasukkan santri aktif dan alumni, TETAPI TIDAK BISA yang meninggal.
+      // Untuk non-formal / internal / rombel: hanya santri aktif.
+      if (isFormalLembaga) {
+        if (s.statusKeanggotaan === 'Meninggal') return false;
+      } else {
+        if (!isAktif(s)) return false;
+      }
+
       if (currentClassStudentIds.includes(s.id)) return false;
 
       // Khusus pada modal tambah anggota yang dibuka di kelas lembaga formal (kecuali calon peserta didik):
@@ -3000,7 +3009,9 @@ export default function LembagaKelasSub({
                                               <span className={`inline-flex items-center px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wide shrink-0 ${
                                                 (s.statusKeanggotaan || 'Aktif') === 'Aktif'
                                                   ? 'bg-[#E6F4EA] text-[#137333]'
-                                                  : 'bg-slate-100 text-slate-500'
+                                                  : s.statusKeanggotaan === 'Alumni'
+                                                    ? 'bg-purple-100 text-purple-800 border border-purple-200/80'
+                                                    : 'bg-slate-100 text-slate-500'
                                               }`}>
                                                 {s.statusKeanggotaan || 'Aktif'}
                                               </span>
@@ -4091,7 +4102,7 @@ export default function LembagaKelasSub({
                                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                     {renderStudentAvatar(student)}
                                     <div className="min-w-0 flex-1">
-                                      <div className="flex items-center">
+                                      <div className="flex items-center gap-1.5">
                                         <span
                                           className="font-semibold text-slate-800 truncate cursor-pointer hover:text-emerald-700 hover:underline inline-block w-fit max-w-full"
                                           onClick={(e) => {
@@ -4102,6 +4113,11 @@ export default function LembagaKelasSub({
                                         >
                                           {student.nama}
                                         </span>
+                                        {student.statusKeanggotaan === 'Alumni' && (
+                                          <span className="px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200/80 shrink-0">
+                                            Alumni
+                                          </span>
+                                        )}
                                       </div>
                                       <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
                                         {[student.desa, student.kecamatan, student.kabupaten].filter(Boolean).map(x => x!.trim()).join(', ') || student.alamat || student.asal || '-'}

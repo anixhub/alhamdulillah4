@@ -18,6 +18,7 @@ import KeamananView from './components/KeamananView';
 import PengaturanView from './components/PengaturanView';
 import LoginView from './components/LoginView';
 import SantriDetailModal from './components/sekretaris/SantriDetailModal';
+import PendingRegistrationsModal from './components/PendingRegistrationsModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { formatBigDigit, mergeIdField } from './lib/utils';
 
@@ -72,6 +73,85 @@ export default function App() {
   const [unreadChatCount, setUnreadChatCount] = useState<number>(0);
   const [hasMentionNotification, setHasMentionNotification] = useState<boolean>(false);
   const [headerSelectedSantri, setHeaderSelectedSantri] = useState<Santri | null>(null);
+
+  // Pending user registrations for Superadmin
+  const [pendingRegistrations, setPendingRegistrations] = useState<any[]>([]);
+  const [showPendingModal, setShowPendingModal] = useState<boolean>(false);
+
+  const checkPendingRegistrations = React.useCallback(async () => {
+    const activeRole = (localStorage.getItem('smartsantri_active_role') || '').toLowerCase();
+    const activeUser = (localStorage.getItem('smartsantri_active_username') || '').toLowerCase();
+    const isSuperadmin = activeRole === 'superadmin' || activeUser === 'superadmin@attaroqqy.com' || activeUser === 'superadmin' || activeUser === 'admin@attaroqqy.com';
+
+    if (!isSuperadmin) {
+      setPendingRegistrations([]);
+      return;
+    }
+
+    try {
+      const local = localStorage.getItem('smartsantri_app_credentials');
+      let creds: any[] = local ? JSON.parse(local) : [];
+
+      const remoteData = await fetchTableData<any>('app_credentials', 'smartsantri_app_credentials', creds);
+      if (Array.isArray(remoteData) && remoteData.length > 0) {
+        creds = remoteData;
+      }
+
+      const pending = creds.filter(c => c.status === 'pending');
+      setPendingRegistrations(pending);
+      if (pending.length > 0) {
+        setShowPendingModal(true);
+      }
+    } catch (err) {
+      console.warn('Gagal memuat pendaftaran akun pending:', err);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (isLoggedIn) {
+      checkPendingRegistrations();
+    }
+  }, [isLoggedIn, checkPendingRegistrations]);
+
+  const handleApprovePendingUser = async (id: string) => {
+    try {
+      await updateTableRow<any>(
+        'app_credentials',
+        'smartsantri_app_credentials',
+        id,
+        { status: 'approved' }
+      );
+      setPendingRegistrations(prev => {
+        const updated = prev.filter(c => c.id !== id);
+        if (updated.length === 0) {
+          setShowPendingModal(false);
+        }
+        return updated;
+      });
+    } catch (err: any) {
+      alert("Gagal menyetujui akun: " + (err.message || 'Error'));
+    }
+  };
+
+  const handleRejectPendingUser = async (id: string) => {
+    try {
+      await updateTableRow<any>(
+        'app_credentials',
+        'smartsantri_app_credentials',
+        id,
+        { status: 'rejected' }
+      );
+      setPendingRegistrations(prev => {
+        const updated = prev.filter(c => c.id !== id);
+        if (updated.length === 0) {
+          setShowPendingModal(false);
+        }
+        return updated;
+      });
+    } catch (err: any) {
+      alert("Gagal menolak akun: " + (err.message || 'Error'));
+    }
+  };
 
   // Realtime WS unread notification counter & mention detector for Admin Chat
   React.useEffect(() => {
@@ -727,9 +807,20 @@ export default function App() {
           onOpenChat={() => setIsChatOpen(true)}
           unreadChatCount={unreadChatCount}
           hasMentionNotification={hasMentionNotification}
+          pendingRegistrationsCount={pendingRegistrations.length}
+          onOpenPendingModal={() => setShowPendingModal(true)}
           santriList={santriList}
           onChangeModule={handleChangeModule}
           onSelectSantri={(santri) => setHeaderSelectedSantri(santri)}
+        />
+
+        {/* Modal Pending User Registrations for Superadmin */}
+        <PendingRegistrationsModal
+          isOpen={showPendingModal}
+          onClose={() => setShowPendingModal(false)}
+          pendingList={pendingRegistrations}
+          onApprove={handleApprovePendingUser}
+          onReject={handleRejectPendingUser}
         />
 
         {/* Modal Santri Detail from Global Header Search */}

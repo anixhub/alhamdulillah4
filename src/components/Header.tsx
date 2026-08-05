@@ -25,7 +25,8 @@ import {
   User,
   Sparkles,
   ArrowRight,
-  BookMarked
+  BookMarked,
+  UserPlus
 } from 'lucide-react';
 import { Santri } from '../types';
 import { renderSantriAvatar } from './SekretarisHelper';
@@ -67,6 +68,8 @@ interface HeaderProps {
   onOpenChat?: () => void;
   unreadChatCount?: number;
   hasMentionNotification?: boolean;
+  pendingRegistrationsCount?: number;
+  onOpenPendingModal?: () => void;
   santriList?: Santri[];
   onChangeModule?: (mod: string, subTab?: string) => void;
   onSelectSantri?: (santri: Santri) => void;
@@ -79,20 +82,27 @@ export default function Header({
   onOpenChat,
   unreadChatCount = 0,
   hasMentionNotification = false,
+  pendingRegistrationsCount = 0,
+  onOpenPendingModal,
   santriList = [],
   onChangeModule,
   onSelectSantri
 }: HeaderProps) {
   const [query, setQuery] = useState('');
   const [isOpenSearch, setIsOpenSearch] = useState(false);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Close search overlay on click outside
+  // Close search overlay and notification dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setIsOpenSearch(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setShowNotifDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -410,17 +420,90 @@ export default function Header({
             </button>
 
             {/* Notification Bell */}
-            <button 
-              id="btn-notifications-desktop"
-              className="relative flex items-center justify-center p-2 text-slate-600 hover:text-emerald-600 transition-colors rounded-xl hover:bg-slate-100/80 cursor-pointer"
-              title="Notifikasi Sistem"
-            >
-              <Bell className="h-5 w-5 sm:h-5.5 sm:w-5.5" />
-              <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500"></span>
-              </span>
-            </button>
+            <div className="relative" ref={notifRef}>
+              <button 
+                id="btn-notifications-desktop"
+                onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                className={`relative flex items-center justify-center p-2 transition-colors rounded-xl cursor-pointer ${
+                  showNotifDropdown ? 'bg-slate-100 text-purple-700' : 'text-slate-600 hover:text-emerald-600 hover:bg-slate-100/80'
+                }`}
+                title="Notifikasi Sistem"
+              >
+                <Bell className="h-5 w-5 sm:h-5.5 sm:w-5.5" />
+                {pendingRegistrationsCount > 0 ? (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-600 text-white font-extrabold text-[10px] shadow-xs animate-pulse">
+                    {pendingRegistrationsCount}
+                  </span>
+                ) : (
+                  <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500"></span>
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Popover Dropdown */}
+              {showNotifDropdown && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-3.5 px-4 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bell className="h-4 w-4 text-amber-400" />
+                      <span className="font-bold text-xs text-white">Notifikasi Sistem</span>
+                    </div>
+                    {pendingRegistrationsCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-rose-500/30 text-rose-300 text-[10px] font-bold border border-rose-400/30">
+                        {pendingRegistrationsCount} Pendaftaran Baru
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-3 space-y-2.5 max-h-80 overflow-y-auto">
+                    {/* Pending Registrations Card */}
+                    {pendingRegistrationsCount > 0 ? (
+                      <div className="p-3 rounded-xl bg-purple-50/80 border border-purple-200/80 flex flex-col gap-2">
+                        <div className="flex items-start gap-2.5">
+                          <div className="p-2 rounded-lg bg-purple-600 text-white shrink-0 mt-0.5">
+                            <UserPlus className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs text-purple-950">
+                              Pendaftaran Akun Baru ({pendingRegistrationsCount})
+                            </p>
+                            <p className="text-[11px] text-purple-800 mt-0.5 leading-relaxed">
+                              Terdapat {pendingRegistrationsCount} permohonan akun pengurus baru yang membutuhkan persetujuan Superadmin.
+                            </p>
+                          </div>
+                        </div>
+
+                        {onOpenPendingModal && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowNotifDropdown(false);
+                              onOpenPendingModal();
+                            }}
+                            className="w-full mt-1 py-1.5 px-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <span>Tinjau Pendaftar</span>
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="py-6 text-center text-slate-400">
+                        <Bell className="h-8 w-8 mx-auto text-slate-300 mb-1.5" />
+                        <p className="text-xs font-bold text-slate-600">Tidak ada pemberitahuan baru</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Semua sistem berjalan normal</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50 border-t border-slate-100 text-center">
+                    <span className="text-[10px] text-slate-400 font-medium">SmartSantri Attaroqqy Notifications</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
         </div>

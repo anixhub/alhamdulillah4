@@ -32,7 +32,8 @@ import {
   AlertCircle,
   Camera,
   RotateCcw,
-  RefreshCw
+  RefreshCw,
+  Smile
 } from 'lucide-react';
 import { 
   fetchTableData, 
@@ -114,6 +115,82 @@ const ADMIN_MENTIONS = [
   { type: 'role', id: 'humasputri', display: '@humasputri', role: 'Humas Putri' },
   { type: 'role', id: 'pendidikan', display: '@pendidikan', role: 'Pendidikan' },
   { type: 'role', id: 'pengurus', display: '@pengurus', role: 'Pengurus' }
+];
+
+// WhatsApp Style Emoji Picker Categories & Data
+const EMOJI_CATEGORIES = [
+  {
+    id: 'recents',
+    name: 'Terbaru',
+    emojis: ['😂', '😍', '😊', '🙏', '👍', '❤️', '🔥', '🤣', '😭', '🥰', '✨', '🏼', '🏽', '🏾', '🏿']
+  },
+  {
+    id: 'smileys',
+    name: 'Smiley & Orang',
+    emojis: [
+      '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '🥲', '🥹', '☺️', '😊', '😇', '🙂', '🙃', '😉',
+      '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎',
+      '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺',
+      '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗',
+      '🤔', '🫣', '🤭', '🤫', '🫡', '🤥', '😶', '😐', '😑', '😬', '🫨', '🫠', '🙄', '😯', '😦', '😧',
+      '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '😵‍💫', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕',
+      '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', '🤖', '🎃',
+      '👋', '🤚', '🖐️', '✋', '🖖', '🫱', '🫲', '🫳', '🫴', '👌', '🤌', '🤏', '✌️', '🤞', '🫰', '🤟',
+      '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '🫵', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏',
+      '🙌', '🫶', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻',
+      '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁️', '👅', '👄', '🫦', '💋'
+    ]
+  },
+  {
+    id: 'animals',
+    name: 'Hewan & Alam',
+    emojis: [
+      '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐻‍❄️', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵',
+      '🙈', '🙉', '🙊', '🐒', '🐔', '🐧', '🐦', '🐤', '🐣', '🐥', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗',
+      '🐴', '🦄', '🐝', '🪱', '🐛', '🦋', '🐌', '🐞', '🐜', '🪰', '🪲', '🪳', '🦟', '🦗', '🕷️', '🕸️',
+      '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳',
+      '🐋', '🦈', '🦭', '🐊', '🐅', '🐆', 'zebra', '🦧', '🦣', '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘',
+      '🦬', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐈', '🐓',
+      '🌸', '🌺', '🌻', '🌼', '🌷', '🌱', '🪴', '🌲', '🌳', '🌴', '🌵', '🌾', '🌿', '☘️', '🍀', '🍁'
+    ]
+  },
+  {
+    id: 'food',
+    name: 'Makanan & Minuman',
+    emojis: [
+      '🍏', '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥',
+      '🥝', '🍅', '🥑', '🍆', '🥔', '🥕', '🌽', '🌶️', '🫑', '🥒', '🥬', '🥦', '🧄', '🧅', '🍄', '🥜',
+      '🍞', '🥐', '🥖', '🫓', '🥨', '🥯', '🥞', '🧇', '🧀', '🍖', '🍗', '🥩', '🥓', '🍔', '🍟', '🍕',
+      '🌭', '🥪', '🌮', '🌯', '🫔', '🥙', '🧆', '🥚', '🍳', '🥘', '🍲', '🫕', '🥣', '🥗', '🍿', '🧈',
+      '🍱', '🍘', '🍙', '🍚', '🍛', '🍜', '🍝', '🍠', '🍢', '🍣', '🍤', '🍥', '🥮', '🍡', '🥟', '🥠',
+      '🍦', '🍧', '🍨', '🍩', '🍪', '🎂', '🍰', '🧁', '🥧', '🍫', '🍬', '🍭', '🍮', '🍯', '🍼', '🥛',
+      '☕', '🫖', '🍵', '🍶', '🍾', '🍷', '🍸', '🍹', '🍺', '🍻', '🥂', '🥃', '🥤', '🧃', '🧉', '🧊'
+    ]
+  },
+  {
+    id: 'activities',
+    name: 'Aktivitas & Objek',
+    emojis: [
+      '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍',
+      '🏏', '🪃', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛼', '🛷', '⛸️', '🥌',
+      '🎿', '⛷️', '🏂', '🪂', '🏋️', '🤼', '🤸', '⛹️', '🤺', '🤾', '🏌️', '🏇', '🧘', '🚗', '🚕', '🚙',
+      '📱', '📲', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '🕹️', '💽', '💾', '💿', '📀', '🎥', '🎬', '📽️', '📷',
+      '📸', '📹', '📺', '📻', '🎙️', '🎚️', '🎛️', '⏱️', '⏲️', '⏰', '🕰️', '⌛', '⏳', '💡', 'flashlight', '🕯️'
+    ]
+  },
+  {
+    id: 'symbols',
+    name: 'Simbol & Hati',
+    emojis: [
+      '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖',
+      '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '<ctrl42>',
+      '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️',
+      '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘',
+      '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭',
+      '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '❇️',
+      '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔶', '🔷', '🔸', '🔹', '🔺', '🔻', '⭐'
+    ]
+  }
 ];
 
 export default function AdminChatDrawer({
@@ -405,11 +482,75 @@ export default function AdminChatDrawer({
   const [mentionQuery, setMentionQuery] = useState<string>('');
   const [userMentionsList, setUserMentionsList] = useState<any[]>(ADMIN_MENTIONS);
 
+  // Emoji Picker State
+  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
+  const [emojiSearch, setEmojiSearch] = useState<string>('');
+  const [activeEmojiCategory, setActiveEmojiCategory] = useState<string>('recents');
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const layoutMenuRef = useRef<HTMLDivElement>(null);
   const mentionMenuRef = useRef<HTMLDivElement>(null);
   const attachMenuRef = useRef<HTMLDivElement>(null);
+
+  // Dynamic Auto Resize Textarea (Up to max 7 lines ~160px height, then scrollable)
+  const autoResizeTextarea = () => {
+    if (inputRef.current) {
+      const el = inputRef.current;
+      el.style.height = 'auto';
+      const maxHeight = 160; // Max height for 7 lines
+      const newHeight = Math.min(el.scrollHeight, maxHeight);
+      el.style.height = `${newHeight}px`;
+      if (el.scrollHeight >= maxHeight) {
+        el.style.overflowY = 'auto';
+      } else {
+        el.style.overflowY = 'hidden';
+      }
+    }
+  };
+
+  useEffect(() => {
+    autoResizeTextarea();
+  }, [inputText]);
+
+  const getRecentEmojis = (): string[] => {
+    try {
+      const stored = localStorage.getItem('smartsantri_recent_emojis');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return ['😂', '😍', '😊', '🙏', '👍', '❤️', '🔥', '🤣', '😭', '🥰', '✨', '🏼', '🏽', '🏾', '🏿'];
+  };
+
+  const handleInsertEmoji = (emoji: string) => {
+    if (inputRef.current) {
+      const start = inputRef.current.selectionStart || inputText.length;
+      const end = inputRef.current.selectionEnd || inputText.length;
+      const newText = inputText.substring(0, start) + emoji + inputText.substring(end);
+      setInputText(newText);
+      
+      try {
+        const recentsKey = 'smartsantri_recent_emojis';
+        const stored = localStorage.getItem(recentsKey);
+        let list: string[] = stored ? JSON.parse(stored) : getRecentEmojis();
+        list = [emoji, ...list.filter(e => e !== emoji)].slice(0, 20);
+        localStorage.setItem(recentsKey, JSON.stringify(list));
+      } catch (e) {}
+
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          const newCursorPos = start + emoji.length;
+          inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        }
+      }, 10);
+    } else {
+      setInputText(prev => prev + emoji);
+    }
+  };
 
   const rawFileInputRef = useRef<HTMLInputElement>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
@@ -424,15 +565,75 @@ export default function AdminChatDrawer({
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Scroll to Bottom Floating Button State
+  // Scroll to Bottom Floating Button State & Unread Below Count
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState<boolean>(false);
+  const [unreadBelowCount, setUnreadBelowCount] = useState<number>(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleChatScroll = () => {
     if (scrollContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
       const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
-      setShowScrollBottomBtn(distanceFromBottom > 120);
+      const isFarFromBottom = distanceFromBottom > 100;
+      setShowScrollBottomBtn(isFarFromBottom);
+
+      if (isFarFromBottom) {
+        const containerBottom = scrollTop + clientHeight;
+        const msgElements = scrollContainerRef.current.querySelectorAll('[id^="msg-"]');
+        let countBelow = 0;
+        msgElements.forEach((el) => {
+          const htmlEl = el as HTMLElement;
+          if (htmlEl.offsetTop > containerBottom - 40) {
+            countBelow++;
+          }
+        });
+        setUnreadBelowCount(countBelow);
+      } else {
+        setUnreadBelowCount(0);
+      }
+    }
+  };
+
+  const jumpToOldestUnreadOrBottom = (msgsList?: ChatMessage[]) => {
+    const list = msgsList || messages;
+    if (!scrollContainerRef.current || list.length === 0) return;
+
+    const lastRead = localStorage.getItem('smartsantri_admin_chat_last_read_time');
+    const myUname = (localStorage.getItem('smartsantri_active_username') || '').trim().toLowerCase();
+
+    let targetMsgId: string | null = null;
+
+    if (lastRead) {
+      const oldestUnread = list.find(m => {
+        const sender = (m.sender_username || m.sender || '').trim().toLowerCase();
+        const isOther = sender ? sender !== myUname : true;
+        const createdAtTime = m.created_at ? new Date(m.created_at).getTime() : 0;
+        const lastReadTime = new Date(lastRead).getTime();
+        return isOther && createdAtTime > lastReadTime;
+      });
+      if (oldestUnread) {
+        targetMsgId = oldestUnread.id;
+      }
+    }
+
+    if (targetMsgId) {
+      const targetElement = document.getElementById(`msg-${targetMsgId}`);
+      if (targetElement && scrollContainerRef.current) {
+        const containerRect = scrollContainerRef.current.getBoundingClientRect();
+        const elementRect = targetElement.getBoundingClientRect();
+        const targetOffset = elementRect.top - containerRect.top + scrollContainerRef.current.scrollTop - 24;
+        scrollContainerRef.current.scrollTop = Math.max(0, targetOffset);
+      } else {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
+    } else {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+
+    // Update last read timestamp to the newest message
+    const latestMsg = list[list.length - 1];
+    if (latestMsg && latestMsg.created_at) {
+      localStorage.setItem('smartsantri_admin_chat_last_read_time', latestMsg.created_at);
     }
   };
 
@@ -495,9 +696,9 @@ export default function AdminChatDrawer({
       loadUserMentions();
       onClearUnread();
       setTimeout(() => {
-        scrollToBottom();
+        jumpToOldestUnreadOrBottom();
         inputRef.current?.focus();
-      }, 80);
+      }, 50);
     }
   }, [isOpen]);
 
@@ -591,6 +792,9 @@ export default function AdminChatDrawer({
       }
       if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
         setShowAttachMenu(false);
+      }
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
       }
       if (msgMenuRef.current && !msgMenuRef.current.contains(e.target as Node)) {
         setActiveMsgMenuId(null);
@@ -739,19 +943,14 @@ export default function AdminChatDrawer({
     };
   }, []);
 
-  // Lock background page body scroll when chat drawer is open
+  // Keep background page body scroll unlocked so main page remains smooth and operational
   useEffect(() => {
-    if (isOpen) {
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = originalOverflow;
-      };
-    }
+    // Intentionally no body scroll locking to ensure background page stays interactive & smooth
   }, [isOpen]);
 
   const loadChatMessages = async () => {
     setLoading(true);
+    let normalizedList: ChatMessage[] = [];
     try {
       const local = localStorage.getItem(LOCAL_STORAGE_KEY);
       let rawList: any[] = local ? JSON.parse(local) : [];
@@ -761,18 +960,19 @@ export default function AdminChatDrawer({
         rawList = remoteData;
       }
 
-      const normalizedList = rawList.map(normalizeChatMessage);
+      normalizedList = rawList.map(normalizeChatMessage);
       safeLocalStorageSetItem(LOCAL_STORAGE_KEY, JSON.stringify(normalizedList));
       setMessages(normalizedList);
     } catch (err) {
       console.warn('Menggunakan data obrolan lokal:', err);
     } finally {
       setLoading(false);
-      setTimeout(scrollToBottom, 150);
+      setTimeout(() => jumpToOldestUnreadOrBottom(normalizedList), 60);
     }
   };
 
   const scrollToBottom = () => {
+    setUnreadBelowCount(0);
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
         top: scrollContainerRef.current.scrollHeight,
@@ -1412,7 +1612,7 @@ export default function AdminChatDrawer({
   const getLayoutClasses = () => {
     switch (layoutMode) {
       case 'full':
-        return 'w-full h-screen rounded-none my-0 right-0 top-0';
+        return 'w-full h-screen rounded-none my-0 right-0 top-0 border-none shadow-none';
       case 'sidebar':
         return 'w-full sm:w-[420px] md:w-[460px] h-screen rounded-none my-0 right-0 top-0 border-l';
       case 'floating':
@@ -1422,7 +1622,9 @@ export default function AdminChatDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex justify-end items-center overflow-hidden p-2 sm:p-4 pointer-events-none">
+    <div className={`fixed inset-0 z-[100] flex overflow-hidden pointer-events-none transition-all ${
+      layoutMode === 'full' ? 'justify-stretch items-stretch p-0' : 'justify-end items-center p-2 sm:p-4'
+    }`}>
       {/* Hidden File Inputs */}
       <input 
         ref={rawFileInputRef} 
@@ -1448,7 +1650,9 @@ export default function AdminChatDrawer({
           transform: layoutMode === 'floating' ? `translateX(${positionX}px)` : undefined,
           overscrollBehavior: 'contain'
         }}
-        className={`relative z-10 pointer-events-auto flex flex-col bg-white border-slate-200/90 shadow-2xl transition-all duration-150 ease-out overscroll-contain ${
+        className={`relative z-10 pointer-events-auto flex flex-col bg-white border-slate-200/90 shadow-2xl ${
+          (isResizing || isDraggingWindow) ? 'transition-none' : 'transition-all duration-150 ease-out'
+        } overscroll-contain ${
           isClosing 
             ? 'animate-out fade-out slide-out-to-bottom-full duration-150 ease-in' 
             : 'animate-in fade-in slide-in-from-bottom-full duration-150 ease-out'
@@ -1672,8 +1876,9 @@ export default function AdminChatDrawer({
           if (!activePinnedMsg) return null;
 
           return (
-            <div className="bg-[#f0f2f5] border-b border-slate-200/90 px-3.5 py-2 shrink-0 flex items-center justify-between shadow-2xs relative z-20 select-none">
-              {/* Left Edge Vertical Marker, Pin Icon, and Message Text */}
+            <div className="bg-[#f0f2f5] border-b border-slate-200/90 px-3.5 py-2 shrink-0 shadow-2xs relative z-20 select-none">
+              <div className={`flex items-center justify-between w-full ${layoutMode === 'full' ? 'max-w-4xl sm:max-w-[60%] mx-auto' : ''}`}>
+                {/* Left Edge Vertical Marker, Pin Icon, and Message Text */}
               <div
                 onClick={() => {
                   if (pinnedMessages.length > 1) {
@@ -1764,6 +1969,7 @@ export default function AdminChatDrawer({
                   </div>
                 )}
               </div>
+              </div>
             </div>
           );
         })()}
@@ -1771,16 +1977,17 @@ export default function AdminChatDrawer({
         {/* TAB 2: MEDIA CONTENT BODY (COMPACT DESKTOP ICON VIEW) */}
         {activeTab === 'media' ? (
           <div className="flex-1 p-3 sm:p-4 overflow-y-auto overscroll-contain bg-slate-50/60">
-            {mediaMessages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-center">
-                <Paperclip className="h-8 w-8 text-slate-300 mb-2" />
-                <p className="text-xs font-bold text-slate-600 mb-1">Belum Ada Media</p>
-                <p className="text-[11px] text-slate-400">Semua foto, dokumen PDF, Word, atau Excel yang dikirim akan tampil di sini.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                {mediaMessages.map((m) => {
-                  const att = m.attachment!;
+            <div className={`w-full ${layoutMode === 'full' ? 'max-w-4xl sm:max-w-[60%] mx-auto' : ''}`}>
+              {mediaMessages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-center">
+                  <Paperclip className="h-8 w-8 text-slate-300 mb-2" />
+                  <p className="text-xs font-bold text-slate-600 mb-1">Belum Ada Media</p>
+                  <p className="text-[11px] text-slate-400">Semua foto, dokumen PDF, Word, atau Excel yang dikirim akan tampil di sini.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                  {mediaMessages.map((m) => {
+                    const att = m.attachment!;
                   const fileName = att.name || 'File';
                   const lowerName = fileName.toLowerCase();
                   const isImage = att.type === 'image' || att.fileType === 'image' || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName);
@@ -1904,15 +2111,17 @@ export default function AdminChatDrawer({
                 })}
               </div>
             )}
+            </div>
           </div>
         ) : (
           /* TAB 1: MAIN CHAT MESSAGES LIST */
           <div 
             ref={scrollContainerRef}
             onScroll={handleChatScroll}
-            className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4 scrollbar-thin relative"
+            className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 scrollbar-thin relative"
           >
-            {loading ? (
+            <div className={`w-full space-y-4 ${layoutMode === 'full' ? 'max-w-4xl sm:max-w-[60%] mx-auto' : ''}`}>
+              {loading ? (
               <div className="flex h-full items-center justify-center text-slate-400 text-xs font-medium py-12">
                 Memuat percakapan...
               </div>
@@ -2347,22 +2556,28 @@ export default function AdminChatDrawer({
             )}
 
             <div ref={messagesEndRef} />
+            </div>
           </div>
         )}
 
         {/* INPUT AREA CONTAINER WITH @ MENTION & ATTACHMENT DROPDOWNS (ONLY SHOWN IN CHAT TAB) */}
         {activeTab === 'chat' && (
           <div className="p-3 sm:p-4 bg-white border-t border-slate-100 shrink-0 relative">
-            
-            {/* Floating Scroll to Bottom Button (WhatsApp Style - Positioned directly above input box) */}
+            <div className={`w-full relative ${layoutMode === 'full' ? 'max-w-4xl sm:max-w-[60%] mx-auto' : ''}`}>
+              {/* Floating Scroll to Bottom Button (WhatsApp Style - Positioned directly above input box) */}
             {showScrollBottomBtn && (
               <button
                 type="button"
                 onClick={scrollToBottom}
-                className="absolute -top-12 right-5 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow-xl border border-slate-200/90 hover:bg-slate-50 hover:text-purple-700 hover:scale-105 active:scale-95 transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-150"
+                className="absolute -top-14 right-5 z-40 flex h-12 w-12 sm:h-13 sm:w-13 items-center justify-center rounded-full bg-white text-slate-700 shadow-2xl border border-slate-200/90 hover:bg-purple-50 hover:text-purple-700 hover:scale-105 active:scale-95 transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-150"
                 title="Gulir ke paling bawah"
               >
-                <ChevronDown className="h-5 w-5 transition-transform group-hover:translate-y-0.5" />
+                <ChevronDown className="h-6 w-6 text-purple-700 transition-transform group-hover:translate-y-0.5" />
+                {unreadBelowCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-extrabold text-white shadow-md ring-2 ring-white animate-in zoom-in-50 duration-150">
+                    {unreadBelowCount > 99 ? '99+' : unreadBelowCount}
+                  </span>
+                )}
               </button>
             )}
             
@@ -2491,129 +2706,268 @@ export default function AdminChatDrawer({
 
             <form 
               onSubmit={handleSendMessage}
-              className="relative rounded-[24px] border-2 border-purple-500/80 focus-within:border-purple-600 bg-white p-3 shadow-xs transition-all"
+              className="relative flex items-end gap-1 sm:gap-1.5 bg-slate-100/90 focus-within:bg-white focus-within:ring-2 focus-within:ring-purple-500/40 border border-slate-200/90 rounded-[28px] p-1.5 sm:p-2 shadow-2xs transition-all"
             >
-              {/* Textarea Input */}
-              <textarea
-                ref={inputRef}
-                rows={2}
-                value={inputText}
-                onChange={handleInputChange}
-                onKeyDown={(e) => {
-                  if (showMentionMenu && filteredMentions.length > 0) {
-                    if (e.key === 'ArrowDown') {
-                      e.preventDefault();
-                      setMentionSelectedIndex((prev) => (prev + 1) % filteredMentions.length);
-                      return;
-                    }
-                    if (e.key === 'ArrowUp') {
-                      e.preventDefault();
-                      setMentionSelectedIndex((prev) => (prev - 1 + filteredMentions.length) % filteredMentions.length);
-                      return;
-                    }
-                    if ((e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey) {
-                      e.preventDefault();
-                      const target = filteredMentions[mentionSelectedIndex] || filteredMentions[0];
-                      if (target) {
-                        handleSelectMention(target.display);
-                      }
-                      return;
-                    }
-                    if (e.key === 'Escape') {
-                      e.preventDefault();
-                      setShowMentionMenu(false);
-                      return;
-                    }
-                  }
+              {/* Left Attachment (+) Button & Popover */}
+              <div className="relative shrink-0 pb-0.5" ref={attachMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAttachMenu(!showAttachMenu);
+                    setShowEmojiPicker(false);
+                  }}
+                  disabled={isCompressing}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-colors cursor-pointer disabled:opacity-50"
+                  title="Tambah Lampiran File atau Gambar"
+                >
+                  <Plus className="h-5 w-5" />
+                </button>
 
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                placeholder="Lanjutkan percakapan... (ketik @ untuk sebut email atau role admin)"
-                className="w-full bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none resize-none font-normal"
-              />
+                {/* Attachment Options Popover */}
+                {showAttachMenu && (
+                  <div className="absolute bottom-12 left-0 z-50 w-64 rounded-2xl bg-white p-2 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-100">
+                    {/* Option 1: File */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAttachMenu(false);
+                        rawFileInputRef.current?.click();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left hover:bg-slate-50 transition-colors cursor-pointer group"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-800">File Dokumen</p>
+                        <p className="text-[10px] text-slate-400">PDF, Word, Excel, Gambar</p>
+                      </div>
+                    </button>
 
-              {/* Input Footer Row with + Attachment Menu and Kirim (Send) Button */}
-              <div className="flex items-center justify-between pt-1 relative">
-                {/* Left Plus Attachment Button & Popover */}
-                <div className="relative" ref={attachMenuRef}>
-                  <button
-                    type="button"
-                    onClick={() => setShowAttachMenu(!showAttachMenu)}
-                    disabled={isCompressing}
-                    className="p-1.5 rounded-full text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
-                    title="Tambah Lampiran File atau Gambar"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </button>
+                    {/* Option 2: Gambar */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAttachMenu(false);
+                        imageFileInputRef.current?.click();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left hover:bg-slate-50 transition-colors cursor-pointer group"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-purple-600 group-hover:bg-purple-100">
+                        <ImageIcon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-800">Gambar</p>
+                        <p className="text-[10px] text-slate-400">Upload foto atau gambar</p>
+                      </div>
+                    </button>
 
-                  {/* Attachment Options Popover */}
-                  {showAttachMenu && (
-                    <div className="absolute bottom-10 left-0 z-50 w-64 rounded-2xl bg-white p-2 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-100">
-                      {/* Option 1: File */}
-                      <button
-                        type="button"
-                        onClick={() => rawFileInputRef.current?.click()}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left hover:bg-slate-50 transition-colors cursor-pointer group"
-                      >
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100">
-                          <FileText className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-800">File Dokumen</p>
-                          <p className="text-[10px] text-slate-400">PDF, Word, Excel, Gambar</p>
-                        </div>
-                      </button>
+                    {/* Option 3: Kamera */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAttachMenu(false);
+                        handleOpenCamera();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left hover:bg-slate-50 transition-colors cursor-pointer group border-t border-slate-100 mt-1 pt-2.5"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100">
+                        <Camera className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-800">Kamera</p>
+                        <p className="text-[10px] text-slate-400">Buka kamera & ambil foto</p>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
 
-                      {/* Option 2: Gambar */}
-                      <button
-                        type="button"
-                        onClick={() => imageFileInputRef.current?.click()}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left hover:bg-slate-50 transition-colors cursor-pointer group"
-                      >
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-purple-600 group-hover:bg-purple-100">
-                          <ImageIcon className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-800">Gambar</p>
-                          <p className="text-[10px] text-slate-400">Upload foto atau gambar</p>
-                        </div>
-                      </button>
+              {/* Emoji Button & WhatsApp-Style Popover */}
+              <div className="relative shrink-0 pb-0.5" ref={emojiPickerRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmojiPicker(!showEmojiPicker);
+                    setShowAttachMenu(false);
+                  }}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors cursor-pointer ${
+                    showEmojiPicker ? 'bg-emerald-100 text-emerald-700 font-bold' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'
+                  }`}
+                  title="Pilih Emoji"
+                >
+                  <Smile className="h-5 w-5" />
+                </button>
 
-                      {/* Option 3: Kamera */}
-                      <button
-                        type="button"
-                        onClick={handleOpenCamera}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left hover:bg-slate-50 transition-colors cursor-pointer group border-t border-slate-100 mt-1 pt-2.5"
-                      >
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100">
-                          <Camera className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-800">Kamera</p>
-                          <p className="text-[10px] text-slate-400">Buka kamera & ambil foto</p>
-                        </div>
-                      </button>
+                {/* WhatsApp Style Emoji Picker Popover */}
+                {showEmojiPicker && (
+                  <div className="absolute bottom-12 left-0 z-50 w-72 sm:w-80 rounded-2xl bg-white p-3 shadow-2xl border border-slate-200/90 animate-in fade-in zoom-in-95 duration-100 space-y-2">
+                    {/* Search Bar */}
+                    <div className="relative flex items-center">
+                      <Search className="absolute left-3 h-4 w-4 text-slate-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={emojiSearch}
+                        onChange={(e) => setEmojiSearch(e.target.value)}
+                        placeholder="Cari Emoji..."
+                        className="w-full rounded-xl bg-slate-100/90 py-1.5 pl-9 pr-8 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                      />
+                      {emojiSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setEmojiSearch('')}
+                          className="absolute right-2.5 p-0.5 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                {/* Right Send Button */}
-                <div className="p-[2px] rounded-full bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-500 shadow-2xs">
-                  <button
-                    type="submit"
-                    disabled={isCompressing}
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-purple-600 hover:text-purple-800 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-                    title="Kirim Pesan"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
-                </div>
+                    {/* Category Tabs */}
+                    {!emojiSearch && (
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 pt-0.5 overflow-x-auto scrollbar-none text-xs gap-1">
+                        {EMOJI_CATEGORIES.map((cat) => {
+                          const isActive = activeEmojiCategory === cat.id;
+                          const icon = cat.id === 'recents' ? '🕒' : cat.emojis[0];
+                          return (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => setActiveEmojiCategory(cat.id)}
+                              className={`p-1.5 rounded-lg transition-all cursor-pointer text-base shrink-0 ${
+                                isActive ? 'bg-emerald-100/90 text-emerald-900 ring-1 ring-emerald-500/80 scale-110 font-bold' : 'hover:bg-slate-100 opacity-70 hover:opacity-100'
+                              }`}
+                              title={cat.name}
+                            >
+                              {icon}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Emoji Display Grid */}
+                    <div className="max-h-56 overflow-y-auto overscroll-contain pr-1 scrollbar-thin">
+                      {emojiSearch ? (
+                        /* Search Results */
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 px-1">
+                            Hasil Pencarian
+                          </p>
+                          <div className="grid grid-cols-7 sm:grid-cols-8 gap-1">
+                            {EMOJI_CATEGORIES.flatMap(c => c.emojis)
+                              .filter((e, idx, self) => self.indexOf(e) === idx)
+                              .slice(0, 80)
+                              .map((emoji, i) => (
+                                <button
+                                  key={`search_${i}_${emoji}`}
+                                  type="button"
+                                  onClick={() => handleInsertEmoji(emoji)}
+                                  className="text-xl p-1.5 rounded-lg hover:bg-emerald-50 hover:scale-125 active:scale-95 transition-all cursor-pointer flex items-center justify-center select-none"
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+                      ) : (
+                        /* Categorized View */
+                        <div className="space-y-2">
+                          {EMOJI_CATEGORIES.filter(c => c.id === activeEmojiCategory).map((category) => {
+                            const list = category.id === 'recents' ? getRecentEmojis() : category.emojis;
+                            return (
+                              <div key={category.id}>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 px-1">
+                                  {category.name}
+                                </p>
+                                <div className="grid grid-cols-7 sm:grid-cols-8 gap-1">
+                                  {list.map((emoji, i) => (
+                                    <button
+                                      key={`${category.id}_${i}_${emoji}`}
+                                      type="button"
+                                      onClick={() => handleInsertEmoji(emoji)}
+                                      className="text-xl p-1.5 rounded-lg hover:bg-emerald-50 hover:scale-125 active:scale-95 transition-all cursor-pointer flex items-center justify-center select-none"
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Single-Line Textarea Input (Auto expands up to 7 lines max ~160px height, then scrollable) */}
+              <div className="flex-1 min-w-0 py-1">
+                <textarea
+                  ref={inputRef}
+                  rows={1}
+                  value={inputText}
+                  onChange={(e) => {
+                    handleInputChange(e);
+                    autoResizeTextarea();
+                  }}
+                  onKeyDown={(e) => {
+                    if (showMentionMenu && filteredMentions.length > 0) {
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setMentionSelectedIndex((prev) => (prev + 1) % filteredMentions.length);
+                        return;
+                      }
+                      if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setMentionSelectedIndex((prev) => (prev - 1 + filteredMentions.length) % filteredMentions.length);
+                        return;
+                      }
+                      if ((e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey) {
+                        e.preventDefault();
+                        const target = filteredMentions[mentionSelectedIndex] || filteredMentions[0];
+                        if (target) {
+                          handleSelectMention(target.display);
+                        }
+                        return;
+                      }
+                      if (e.key === 'Escape') {
+                        e.preventDefault();
+                        setShowMentionMenu(false);
+                        return;
+                      }
+                    }
+
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder="Ketik pesan..."
+                  className="w-full bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none resize-none font-normal leading-relaxed max-h-[160px] overflow-y-hidden"
+                />
+              </div>
+
+              {/* Right Send Button */}
+              <div className="shrink-0 pb-0.5">
+                <button
+                  type="submit"
+                  disabled={isCompressing || (!inputText.trim() && !pendingAttachment && !editingMsgId)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white transition-all cursor-pointer shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Kirim Pesan"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
               </div>
             </form>
 
+            {layoutMode === 'full' && (
+              <p className="text-[11px] text-slate-400 text-center mt-2.5 font-medium select-none">
+                Informasi dari AI mungkin tidak akurat
+              </p>
+            )}
+            </div>
           </div>
         )}
 

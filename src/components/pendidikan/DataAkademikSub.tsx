@@ -507,9 +507,17 @@ export default function DataAkademikSub({
 
   // Filter students based on academic query, gender and academic filters
   const filteredSantri = santriList.filter(s => {
-    // 0. Filter out Alumni
-    if (s.statusKeanggotaan === 'Alumni') {
-      return false;
+    // 0. Filter statusKeanggotaan:
+    // Khusus Pendidikan Formal: dapat memasukkan santri aktif dan alumni, TETAPI BUKAN yang meninggal.
+    // Untuk non-formal / internal / rombel: hanya santri aktif.
+    if (academicType === 'formal') {
+      if (s.statusKeanggotaan === 'Meninggal') {
+        return false;
+      }
+    } else {
+      if (s.statusKeanggotaan === 'Alumni' || s.statusKeanggotaan === 'Meninggal') {
+        return false;
+      }
     }
 
     // 1. Gender check
@@ -637,6 +645,11 @@ export default function DataAkademikSub({
   // Count unassigned students
   const unassignedCount = santriList.filter(s => {
     if (s.gender !== genderFilter) return false;
+    if (academicType === 'formal') {
+      if (s.statusKeanggotaan === 'Meninggal') return false;
+    } else {
+      if (s.statusKeanggotaan === 'Alumni' || s.statusKeanggotaan === 'Meninggal') return false;
+    }
     if (academicType === 'rombel') {
       const rombelInfo = getStudentRombelInfo(s);
       return rombelInfo.length === 0;
@@ -2183,15 +2196,22 @@ export default function DataAkademikSub({
                             {renderSantriAvatar(s, `h-9 w-9 shrink-0 rounded-full border border-slate-100 shadow-xs transition-all ${!isSelectionMode ? 'hover:ring-2 hover:ring-indigo-300' : ''}`)}
                           </div>
                           <div className="flex flex-col min-w-0">
-                            <p 
-                              onClick={() => {
-                                if (!isSelectionMode) setSelectedSantri(s);
-                              }}
-                              className={`font-display text-sm font-bold text-slate-900 leading-tight transition-colors truncate ${!isSelectionMode ? 'hover:text-indigo-600 cursor-pointer' : 'cursor-default'}`}
-                              title={!isSelectionMode ? "Klik untuk lihat biodata lengkap" : undefined}
-                            >
-                              {s.nama}
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <p 
+                                onClick={() => {
+                                  if (!isSelectionMode) setSelectedSantri(s);
+                                }}
+                                className={`font-display text-sm font-bold text-slate-900 leading-tight transition-colors truncate ${!isSelectionMode ? 'hover:text-indigo-600 cursor-pointer' : 'cursor-default'}`}
+                                title={!isSelectionMode ? "Klik untuk lihat biodata lengkap" : undefined}
+                              >
+                                {s.nama}
+                              </p>
+                              {s.statusKeanggotaan === 'Alumni' && (
+                                <span className="px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200/80 shrink-0">
+                                  Alumni
+                                </span>
+                              )}
+                            </div>
                             {getFormattedAlamat(s) ? (
                               <p 
                                 className="text-[11px] text-slate-500 font-medium leading-normal mt-0.5 max-w-[260px] truncate"
