@@ -2008,50 +2008,66 @@ export default function KamarSub({
 
                                         return (
                                           <tr
-                                            key={s.id}
-                                            data-slot={slotNum}
-                                            draggable={canWriteCurrent}
-                                            onDragStart={(e) => {
-                                              setDraggedStudentId(s.id);
-                                              e.dataTransfer.setData('text/plain', s.id);
-                                              e.dataTransfer.effectAllowed = 'move';
-                                            }}
-                                            onDragEnd={() => {
-                                              setDraggedStudentId(null);
-                                              setDragOverSlot(null);
-                                            }}
-                                            onDragEnter={(e) => {
-                                              e.preventDefault();
-                                              e.dataTransfer.dropEffect = 'move';
-                                              if (!isOwnSlot && dragOverSlot !== slotNum) {
-                                                setDragOverSlot(slotNum);
-                                              }
-                                            }}
-                                            onDragOver={(e) => {
-                                              e.preventDefault();
-                                              e.dataTransfer.dropEffect = 'move';
-                                              if (!isOwnSlot && dragOverSlot !== slotNum) {
-                                                setDragOverSlot(slotNum);
-                                              }
-                                            }}
-                                            onDragLeave={(e) => {
-                                              const related = e.relatedTarget as HTMLElement | null;
-                                              if (related && (e.currentTarget.contains(related) || related.closest?.(`[data-slot="${slotNum}"]`))) {
-                                                return;
-                                              }
-                                              if (dragOverSlot === slotNum) {
-                                                setDragOverSlot(null);
-                                              }
-                                            }}
-                                            onDrop={(e) => {
-                                              e.preventDefault();
-                                              if (!isOwnSlot) {
-                                                handleSlotDropSwap(slotNum);
-                                              }
-                                            }}
-                                            className={`transition-colors cursor-grab active:cursor-grabbing group ${
-                                              isOver && !isOwnSlot ? 'bg-purple-100/95 ring-2 ring-purple-500/90 z-10' : idx > 0 ? 'bg-purple-50/20 hover:bg-purple-50/40' : 'hover:bg-purple-50/20'
-                                            }`}
+                                             key={s.id}
+                                             data-slot={slotNum}
+                                             draggable={!isSelectionMode && canWriteCurrent}
+                                             onClick={() => {
+                                               if (isSelectionMode) {
+                                                 if (selectedStudentIds.includes(s.id)) {
+                                                   setSelectedStudentIds(prev => prev.filter(id => id !== s.id));
+                                                 } else {
+                                                   setSelectedStudentIds(prev => [...prev, s.id]);
+                                                 }
+                                               } else {
+                                                 setSelectedSantriForDetail(s);
+                                               }
+                                             }}
+                                             onDragStart={(e) => {
+                                               if (isSelectionMode) return;
+                                               setDraggedStudentId(s.id);
+                                               e.dataTransfer.setData('text/plain', s.id);
+                                               e.dataTransfer.effectAllowed = 'move';
+                                             }}
+                                             onDragEnd={() => {
+                                               setDraggedStudentId(null);
+                                               setDragOverSlot(null);
+                                             }}
+                                             onDragEnter={(e) => {
+                                               e.preventDefault();
+                                               e.dataTransfer.dropEffect = 'move';
+                                               if (!isOwnSlot && dragOverSlot !== slotNum) {
+                                                 setDragOverSlot(slotNum);
+                                               }
+                                             }}
+                                             onDragOver={(e) => {
+                                               e.preventDefault();
+                                               e.dataTransfer.dropEffect = 'move';
+                                               if (!isOwnSlot && dragOverSlot !== slotNum) {
+                                                 setDragOverSlot(slotNum);
+                                               }
+                                             }}
+                                             onDragLeave={(e) => {
+                                               const related = e.relatedTarget as HTMLElement | null;
+                                               if (related && (e.currentTarget.contains(related) || related.closest?.(`[data-slot="${slotNum}"]`))) {
+                                                 return;
+                                               }
+                                               if (dragOverSlot === slotNum) {
+                                                 setDragOverSlot(null);
+                                               }
+                                             }}
+                                             onDrop={(e) => {
+                                               e.preventDefault();
+                                               if (!isOwnSlot) {
+                                                 handleSlotDropSwap(slotNum);
+                                               }
+                                             }}
+                                             className={`transition-colors cursor-pointer group ${
+                                               isSelectionMode && selectedStudentIds.includes(s.id)
+                                                 ? 'bg-purple-100/90 ring-1 ring-purple-300 shadow-2xs'
+                                                 : isOver && !isOwnSlot 
+                                                   ? 'bg-purple-100/95 ring-2 ring-purple-500/90 z-10' 
+                                                   : 'hover:bg-purple-50/60 bg-white'
+                                             }`}
                                           >
                                             {isSelectionMode && (
                                               <td className="py-3 px-2 text-center" onClick={e => e.stopPropagation()}>

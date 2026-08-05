@@ -534,7 +534,8 @@ export default function LembagaKelasSub({
     }
   }, [initialTab]);
 
-  // Auto-switch tab on initial view if activeTab has no lembagas but the alternative tab has lembagas
+  // Auto-switch tab on initial view if activeTab has no lembagas (disabled so user can access empty Pendidikan Formal tab)
+  /* 
   useEffect(() => {
     if (selectedLembaga) return;
     if (lembagasList && lembagasList.length > 0 && activeTab !== 'Rombel') {
@@ -550,6 +551,7 @@ export default function LembagaKelasSub({
       }
     }
   }, [lembagasList, selectedGender, activeTab, selectedLembaga]);
+  */
 
   // Sync scroll buttons status on data or view change
   useEffect(() => {
