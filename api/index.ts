@@ -105,6 +105,7 @@ const getUploadDir = (): string => {
     return path.join(process.cwd(), 'public', 'uploads');
   }
 };
+console.log(">>> UPLOAD_DIR terdeteksi sebagai:", getUploadDir());
 
 // Serve static uploads using UPLOAD_DIR or fallback
 const uploadDirStatic = getUploadDir();
