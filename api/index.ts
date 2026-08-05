@@ -388,45 +388,14 @@ app.post("/api/upload", async (req, res) => {
     const buffer = Buffer.from(fileBase64, "base64");
 
     const uploadBase = getUploadDir();
-    const rootDir = getPersistentRootDir();
-    const dirsToSave: string[] = [
-      path.join(uploadBase, subFolder),
-      path.join(rootDir, "uploads", subFolder),
-      path.join(process.cwd(), "uploads", subFolder),
-      path.join(process.cwd(), "public", "uploads", subFolder),
-      path.join(process.cwd(), "dist", "uploads", subFolder),
-    ];
+    const targetDir = path.join(uploadBase, subFolder);
 
-    let currDir = process.cwd();
-    for (let i = 0; i < 5; i++) {
-      const parentDir = path.dirname(currDir);
-      if (parentDir === currDir) break;
-      currDir = parentDir;
-      if (fs.existsSync(path.join(currDir, 'config')) || currDir.includes('hbuilds') || fs.existsSync(path.join(currDir, 'versions'))) {
-        dirsToSave.push(path.join(currDir, 'uploads', subFolder));
-      }
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    try {
-      dirsToSave.push(path.resolve(process.cwd(), "../../../uploads", subFolder));
-      dirsToSave.push(path.resolve(process.cwd(), "../../../../uploads", subFolder));
-    } catch (e) {}
-
-    const uniqueDirs = Array.from(new Set(dirsToSave));
-
-    uniqueDirs.forEach(dir => {
-      try {
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-      } catch (e) {}
-    });
-
-    uniqueDirs.forEach(dir => {
-      try {
-        fs.writeFileSync(path.join(dir, fileName), buffer);
-      } catch (e) {}
-    });
+    const targetFilePath = path.join(targetDir, fileName);
+    fs.writeFileSync(targetFilePath, buffer);
 
     const publicUrl = `/api/uploads/${subFolder}/${fileName}`;
 
@@ -441,7 +410,7 @@ app.post("/api/upload", async (req, res) => {
   }
 });
 
-// Serve uploaded files securely via /api/uploads to bypass AI Studio auth bridge / redirection on mobile & external browsers
+// Serve uploaded files securely via /api/uploads
 app.get("/api/uploads/:category/:fileName", (req, res) => {
   try {
     const { category, fileName } = req.params;
@@ -449,39 +418,10 @@ app.get("/api/uploads/:category/:fileName", (req, res) => {
     const safeFileName = (fileName || '').replace(/[^a-zA-Z0-9_.-]/g, '_');
 
     const uploadBase = getUploadDir();
-    const rootDir = getPersistentRootDir();
-    const possiblePaths: string[] = [
-      path.join(uploadBase, safeCategory, safeFileName),
-      path.join(uploadBase, safeFileName),
-      path.join(rootDir, 'uploads', safeCategory, safeFileName),
-      path.join(rootDir, 'public', 'uploads', safeCategory, safeFileName),
-    ];
+    const targetFilePath = path.join(uploadBase, safeCategory, safeFileName);
 
-    let currDir = process.cwd();
-    for (let i = 0; i < 5; i++) {
-      possiblePaths.push(path.join(currDir, 'uploads', safeCategory, safeFileName));
-      possiblePaths.push(path.join(currDir, 'public', 'uploads', safeCategory, safeFileName));
-      possiblePaths.push(path.join(currDir, 'dist', 'uploads', safeCategory, safeFileName));
-      const parentDir = path.dirname(currDir);
-      if (parentDir === currDir) break;
-      currDir = parentDir;
-      possiblePaths.push(path.join(currDir, 'uploads', safeCategory, safeFileName));
-    }
-
-    possiblePaths.push(
-      path.resolve(process.cwd(), "../../../uploads", safeCategory, safeFileName),
-      path.resolve(process.cwd(), "../../../../uploads", safeCategory, safeFileName),
-      path.join(process.cwd(), "uploads", safeCategory, safeFileName),
-      path.join(process.cwd(), "public", "uploads", safeCategory, safeFileName),
-      path.join(process.cwd(), "dist", "uploads", safeCategory, safeFileName),
-    );
-
-    const uniquePaths = Array.from(new Set(possiblePaths));
-
-    for (const filePath of uniquePaths) {
-      if (fs.existsSync(filePath)) {
-        return res.sendFile(filePath);
-      }
+    if (fs.existsSync(targetFilePath)) {
+      return res.sendFile(targetFilePath);
     }
 
     res.status(404).json({ error: "File not found" });
