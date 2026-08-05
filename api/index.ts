@@ -4,6 +4,10 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 import { WebSocketServer, WebSocket } from "ws";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Persistent root directory helper across Hostinger redeploys (hbuilds root containing config, versions, uploads)
 const getPersistentRootDir = (): string => {
@@ -85,10 +89,29 @@ app.use((req, res, next) => {
 // Enable JSON parsing with a 10MB limit for compressed base64 photos
 app.use(express.json({ limit: "10mb" }));
 
-// Serve static uploads
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
+// Upload Directory Helper (UPLOAD_DIR env variable with fallback to path.join(__dirname, 'public/uploads'))
+const getUploadDir = (): string => {
+  if (process.env.UPLOAD_DIR && process.env.UPLOAD_DIR.trim() !== '') {
+    return process.env.UPLOAD_DIR;
+  }
+  try {
+    return path.join(__dirname, 'public', 'uploads');
+  } catch (e) {
+    return path.join(process.cwd(), 'public', 'uploads');
+  }
+};
+
+// Serve static uploads using UPLOAD_DIR or fallback
+const uploadDirStatic = getUploadDir();
+if (!fs.existsSync(uploadDirStatic)) {
+  try {
+    fs.mkdirSync(uploadDirStatic, { recursive: true });
+  } catch (e) {}
+}
+app.use("/uploads", express.static(uploadDirStatic));
+app.use("/api/uploads", express.static(uploadDirStatic));
 app.use("/uploads", express.static(path.join(process.cwd(), "dist", "uploads")));
+app.use("/api/uploads", express.static(path.join(process.cwd(), "dist", "uploads")));
 
 // -------------------------------------------------------------
 // 1. MySQL Pool & Memory Store (Fallback) Initialization
@@ -359,8 +382,10 @@ app.post("/api/upload", async (req, res) => {
     const subFolder = (category || 'dokumen').replace(/[^a-zA-Z0-9_-]/g, '_');
     const buffer = Buffer.from(fileBase64, "base64");
 
+    const uploadBase = getUploadDir();
     const rootDir = getPersistentRootDir();
     const dirsToSave: string[] = [
+      path.join(uploadBase, subFolder),
       path.join(rootDir, "uploads", subFolder),
       path.join(process.cwd(), "uploads", subFolder),
       path.join(process.cwd(), "public", "uploads", subFolder),
@@ -418,8 +443,11 @@ app.get("/api/uploads/:category/:fileName", (req, res) => {
     const safeCategory = (category || 'dokumen').replace(/[^a-zA-Z0-9_-]/g, '_');
     const safeFileName = (fileName || '').replace(/[^a-zA-Z0-9_.-]/g, '_');
 
+    const uploadBase = getUploadDir();
     const rootDir = getPersistentRootDir();
     const possiblePaths: string[] = [
+      path.join(uploadBase, safeCategory, safeFileName),
+      path.join(uploadBase, safeFileName),
       path.join(rootDir, 'uploads', safeCategory, safeFileName),
       path.join(rootDir, 'public', 'uploads', safeCategory, safeFileName),
     ];

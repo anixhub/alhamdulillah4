@@ -4,7 +4,11 @@ import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
 import { WebSocketServer, WebSocket } from "ws";
+import { fileURLToPath } from "url";
 import app, { broadcastWebSocketMessage, setWssInstance } from "./api/index";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -55,17 +59,26 @@ async function startServer() {
     });
   });
 
-  // Serve static uploads in both dev and production
-  const publicUploadsPath = path.join(process.cwd(), "public", "uploads");
+  // Serve static uploads using UPLOAD_DIR or fallback to path.join(__dirname, 'public/uploads')
+  const uploadDir = process.env.UPLOAD_DIR && process.env.UPLOAD_DIR.trim() !== ''
+    ? process.env.UPLOAD_DIR
+    : path.join(__dirname, "public", "uploads");
   const distUploadsPath = path.join(process.cwd(), "dist", "uploads");
-  if (!fs.existsSync(publicUploadsPath)) {
-    fs.mkdirSync(publicUploadsPath, { recursive: true });
+
+  if (!fs.existsSync(uploadDir)) {
+    try {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    } catch (e) {}
   }
   if (!fs.existsSync(distUploadsPath)) {
-    fs.mkdirSync(distUploadsPath, { recursive: true });
+    try {
+      fs.mkdirSync(distUploadsPath, { recursive: true });
+    } catch (e) {}
   }
-  app.use("/uploads", express.static(publicUploadsPath));
+  app.use("/uploads", express.static(uploadDir));
+  app.use("/api/uploads", express.static(uploadDir));
   app.use("/uploads", express.static(distUploadsPath));
+  app.use("/api/uploads", express.static(distUploadsPath));
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
