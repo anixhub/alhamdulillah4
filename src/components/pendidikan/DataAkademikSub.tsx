@@ -21,11 +21,13 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ChevronsUpDown,
   ChevronDown,
   MoreVertical,
   AlertTriangle
 } from 'lucide-react';
 import { Santri, Lembaga, Kelas, KategoriRombel, KelompokRombel, RombelAssignment, isEmisTerdaftar } from '../../types';
+import { demoteSantriToCalonPesertaDidik, parseCatatanInvalid } from '../../lib/utils';
 import { renderSantriAvatar, getPesantrenProfile, calculateRealtimeAge } from '../SekretarisHelper';
 import SantriDetailModal from '../sekretaris/SantriDetailModal';
 import { ExportModal } from '../ExportModal';
@@ -149,6 +151,11 @@ export default function DataAkademikSub({
   const [pendingCellValue, setPendingCellValue] = useState<string | null>(null);
   const [editingNisId, setEditingNisId] = useState<string | null>(null);
   const [editingNisVal, setEditingNisVal] = useState<string>('');
+
+  // Status EMIS Dropdown States
+  const [activeEmisDropdownId, setActiveEmisDropdownId] = useState<string | null>(null);
+  const [emisDropdownPos, setEmisDropdownPos] = useState<{ top: number; left: number; isUpward?: boolean } | null>(null);
+  const [pendingEmis, setPendingEmis] = useState<{ [santriId: string]: 'Terdaftar' | 'Belum' | 'Invalid' }>({});
 
   // Row Action Dropdown State
   const [openDropdownRowId, setOpenDropdownRowId] = useState<string | null>(null);
@@ -576,6 +583,10 @@ export default function DataAkademikSub({
     let comparison = 0;
     if (sortKey === 'nama') {
       comparison = a.nama.localeCompare(b.nama, 'id', { sensitivity: 'base', numeric: true });
+    } else if (sortKey === 'statusEmis') {
+      const emisA = a.statusEmis || 'Belum';
+      const emisB = b.statusEmis || 'Belum';
+      comparison = emisA.localeCompare(emisB, 'id', { sensitivity: 'base' });
     } else if (sortKey === 'nis') {
       const nisA = a.nis || '';
       const nisB = b.nis || '';
@@ -1365,6 +1376,7 @@ export default function DataAkademikSub({
         {renderSortHeader('nama', 'Nama Lengkap', true, isSelectionMode ? 'sm:left-[90px] sm:shadow-[2px_0_5px_rgba(0,0,0,0.03)] border-r border-slate-100 min-w-[240px]' : 'sm:left-[42px] sm:shadow-[2px_0_5px_rgba(0,0,0,0.03)] border-r border-slate-100 min-w-[240px]', getStyle())}
 
         {renderSortHeader('nis', 'NIS', false, '', getStyle())}
+        {renderSortHeader('statusEmis', 'Status EMIS', false, 'min-w-[110px] w-[110px]', getStyle())}
         {academicType !== 'rombel' ? (
           activeLembagas.map(lem => renderSortHeader('lembaga_' + lem.id, lem.nama, false, '', getStyle()))
         ) : (
@@ -2195,6 +2207,58 @@ export default function DataAkademikSub({
                       {/* NIS Cell */}
                       <td className="px-6 py-4 whitespace-nowrap font-mono text-xs font-semibold text-slate-700">
                         {s.nis || '-'}
+                      </td>
+
+                      {/* Status EMIS Cell */}
+                      <td className="px-4 py-4 whitespace-nowrap text-xs w-[110px] min-w-[110px]">
+                        <div className="relative inline-block text-left">
+                          {canWriteCurrent ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                if (isSelectionMode) return;
+                                e.stopPropagation();
+                                if (activeEmisDropdownId === s.id) {
+                                  setActiveEmisDropdownId(null);
+                                  setEmisDropdownPos(null);
+                                } else {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const spaceBelow = window.innerHeight - rect.bottom;
+                                  const spaceAbove = rect.top;
+                                  const isUpward = spaceBelow < 180 && spaceAbove > spaceBelow;
+
+                                  setEmisDropdownPos({
+                                    top: isUpward ? rect.top - 6 : rect.bottom + 6,
+                                    left: Math.max(10, Math.min(window.innerWidth - 150, rect.left)),
+                                    isUpward
+                                  });
+                                  setActiveEmisDropdownId(s.id);
+                                }
+                              }}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide transition-colors cursor-pointer shadow-2xs ${
+                                s.statusEmis === 'Terdaftar'
+                                  ? 'bg-[#E6F4EA] text-[#137333] hover:bg-emerald-200'
+                                  : s.statusEmis === 'Invalid'
+                                  ? 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                              title="Klik untuk ubah Status EMIS"
+                            >
+                              <span>{s.statusEmis || 'Belum'}</span>
+                              <ChevronsUpDown className="h-3 w-3 opacity-60 shrink-0" />
+                            </button>
+                          ) : (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide ${
+                              s.statusEmis === 'Terdaftar'
+                                ? 'bg-[#E6F4EA] text-[#137333]'
+                                : s.statusEmis === 'Invalid'
+                                ? 'bg-rose-50 text-rose-700'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {s.statusEmis || 'Belum'}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Academic Assignment Details Cells with Direct Inline Edit */}
@@ -3089,6 +3153,122 @@ export default function DataAkademikSub({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Portal Dropdown Status EMIS */}
+      {typeof document !== 'undefined' && activeEmisDropdownId && emisDropdownPos && createPortal(
+        <>
+          <div 
+            className="fixed inset-0 z-[9998] bg-transparent"
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveEmisDropdownId(null);
+              setEmisDropdownPos(null);
+            }}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: emisDropdownPos.isUpward ? 'auto' : `${emisDropdownPos.top}px`,
+              bottom: emisDropdownPos.isUpward ? `${window.innerHeight - emisDropdownPos.top}px` : 'auto',
+              left: `${emisDropdownPos.left}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="dropdown-container-box w-max min-w-[125px] max-w-[160px] bg-white border border-slate-200 rounded-2xl shadow-2xl z-[9999] py-1.5 text-xs font-bold text-slate-700 animate-in fade-in zoom-in-95"
+          >
+            {(() => {
+              const s = sortedSantri.find(item => item.id === activeEmisDropdownId);
+              if (!s) return null;
+              const currentEmis = s.statusEmis || 'Belum';
+              const pendingVal = pendingEmis[s.id];
+              const hasChangedEmis = pendingVal !== undefined && pendingVal !== currentEmis;
+
+              return (
+                <>
+                  {hasChangedEmis && (
+                    <div className="flex items-center justify-between px-2.5 py-1 mb-1 border-b border-amber-100 bg-amber-50/80 rounded-t-xl">
+                      <span className="text-[10px] font-bold text-amber-800">Simpan?</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const valToApply = pendingEmis[s.id] || currentEmis;
+                            if (valToApply !== currentEmis && onUpdateSantri) {
+                              const { extraNote } = parseCatatanInvalid(s.catatan);
+                              let updated: Santri = {
+                                ...s,
+                                statusEmis: valToApply as any,
+                                catatan: s.statusEmis === 'Invalid' && valToApply !== 'Invalid' ? extraNote : (valToApply === 'Invalid' && !s.catatan?.toLowerCase().startsWith('emis invalid:') ? `Emis Invalid: Status EMIS Invalid${s.catatan ? ` | ${s.catatan}` : ''}` : s.catatan)
+                              };
+                              if (valToApply === 'Belum') {
+                                updated = demoteSantriToCalonPesertaDidik(s, lembagasList, kelasList);
+                              }
+                              onUpdateSantri(updated);
+                              setToast({ message: `Status EMIS ${s.nama} berhasil diubah ke ${valToApply}`, type: 'success' });
+                            }
+                            setActiveEmisDropdownId(null);
+                            setEmisDropdownPos(null);
+                            setPendingEmis(prev => {
+                              const copy = { ...prev };
+                              delete copy[s.id];
+                              return copy;
+                            });
+                          }}
+                          className="rounded p-0.5 bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer transition-all shadow-2xs active:scale-95 flex items-center justify-center"
+                          title="Terapkan"
+                        >
+                          <Check className="h-3.5 w-3.5 stroke-[3]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveEmisDropdownId(null);
+                            setEmisDropdownPos(null);
+                            setPendingEmis(prev => {
+                              const copy = { ...prev };
+                              delete copy[s.id];
+                              return copy;
+                            });
+                          }}
+                          className="rounded p-0.5 bg-slate-200 text-slate-700 hover:bg-slate-300 cursor-pointer transition-all shadow-2xs active:scale-95 flex items-center justify-center"
+                          title="Batal"
+                        >
+                          <X className="h-3.5 w-3.5 stroke-[3]" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {(['Terdaftar', 'Invalid', 'Belum'] as const).map((emisOption) => {
+                    const activeVal = pendingEmis[s.id] || currentEmis;
+                    const isCurrent = activeVal === emisOption;
+                    return (
+                      <button
+                        key={emisOption}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPendingEmis(prev => ({ ...prev, [s.id]: emisOption }));
+                        }}
+                        className={`w-full text-left px-3 py-1.5 transition-colors flex items-center justify-between cursor-pointer ${
+                          isCurrent 
+                            ? (emisOption === 'Invalid' ? 'bg-rose-50 text-rose-700 font-bold' : 'bg-emerald-50 text-emerald-700 font-bold') 
+                            : 'hover:bg-slate-50 text-slate-600'
+                        }`}
+                      >
+                        <span className={emisOption === 'Invalid' ? 'text-rose-600 font-bold' : ''}>{emisOption}</span>
+                        {isCurrent && <span className={`h-1.5 w-1.5 rounded-full ${emisOption === 'Invalid' ? 'bg-rose-600' : 'bg-emerald-600'}`} />}
+                      </button>
+                    );
+                  })}
+                </>
+              );
+            })()}
+          </div>
+        </>,
+        document.body
+      )}
 
     </div>
   );
