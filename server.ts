@@ -7,8 +7,13 @@ import { WebSocketServer, WebSocket } from "ws";
 import { fileURLToPath } from "url";
 import app, { broadcastWebSocketMessage, setWssInstance } from "./api/index";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+let __dirname: string;
+try {
+  // @ts-ignore
+  __dirname = path.dirname(fileURLToPath(import.meta.url));
+} catch {
+  __dirname = process.cwd();
+}
 
 dotenv.config();
 

@@ -6,8 +6,13 @@ import fs from "fs";
 import { WebSocketServer, WebSocket } from "ws";
 import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+let __dirname: string;
+try {
+  // @ts-ignore
+  __dirname = path.dirname(fileURLToPath(import.meta.url));
+} catch {
+  __dirname = process.cwd();
+}
 
 // Persistent root directory helper across Hostinger redeploys (hbuilds root containing config, versions, uploads)
 const getPersistentRootDir = (): string => {
