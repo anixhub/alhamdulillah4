@@ -25,6 +25,9 @@ import {
   Eye,
   Star,
   Pin,
+  PinOff,
+  ArrowRight,
+  Clock,
   MessageSquare,
   AlertCircle
 } from 'lucide-react';
@@ -72,8 +75,17 @@ export interface ChatMessage {
   replyTo?: any;
   is_edited?: boolean;
   edited_at?: string;
+  is_system_notice?: boolean;
   created_at: string;
   timestamp?: string;
+}
+
+export interface PinnedItem {
+  id: string;
+  pinnedAt: string;
+  expiresAt: number | null;
+  durationText: string;
+  pinnedBy: string;
 }
 
 interface AdminChatDrawerProps {
@@ -141,6 +153,15 @@ export default function AdminChatDrawer({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Pinned Messages State
+  const [pinnedItems, setPinnedItems] = useState<PinnedItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('smartsantri_admin_chat_pinned_meta');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   const [pinnedMsgIds, setPinnedMsgIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('smartsantri_admin_chat_pinned');
@@ -150,26 +171,149 @@ export default function AdminChatDrawer({
     }
   });
 
+  const [pinDurationModalMsgId, setPinDurationModalMsgId] = useState<string | null>(null);
+  const [selectedPinDuration, setSelectedPinDuration] = useState<'24h' | '7d' | '30d'>('7d');
+  const [activePinnedIndex, setActivePinnedIndex] = useState<number>(0);
+  const [showPinnedDropdown, setShowPinnedDropdown] = useState<boolean>(false);
+  const pinnedDropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     safeLocalStorageSetItem('smartsantri_admin_chat_pinned', JSON.stringify(pinnedMsgIds));
   }, [pinnedMsgIds]);
 
-  const handleTogglePinMessage = (msgId: string) => {
-    setPinnedMsgIds((prev) => {
-      const isPinned = prev.includes(msgId);
-      if (isPinned) {
-        showToast('Sematkan pesan dilepas');
-        return prev.filter((id) => id !== msgId);
-      } else {
-        if (prev.length >= 3) {
-          showToast('Maksimal 3 pesan disematkan. Lepas sematan lain terlebih dahulu.');
-          return prev;
-        }
-        showToast('Pesan berhasil disematkan 📌');
-        return [...prev, msgId];
+  useEffect(() => {
+    safeLocalStorageSetItem('smartsantri_admin_chat_pinned_meta', JSON.stringify(pinnedItems));
+  }, [pinnedItems]);
+
+  // Click outside to close pinned message dropdown menu
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (pinnedDropdownRef.current && !pinnedDropdownRef.current.contains(e.target as Node)) {
+        setShowPinnedDropdown(false);
       }
+    };
+    if (showPinnedDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showPinnedDropdown]);
+
+  // Cleanup expired pinned messages
+  useEffect(() => {
+    const now = Date.now();
+    const validItems = pinnedItems.filter((item) => !item.expiresAt || item.expiresAt > now);
+    if (validItems.length !== pinnedItems.length) {
+      setPinnedItems(validItems);
+      const validIds = validItems.map((v) => v.id);
+      setPinnedMsgIds(validIds);
+    }
+  }, []);
+
+  // Helper to insert center-aligned System Notice message into chat stream
+  const createSystemNotice = (noticeText: string) => {
+    const nowIso = new Date().toISOString();
+    const sysMsg: ChatMessage = {
+      id: 'msg_sys_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      sender_username: 'system',
+      sender_name: 'System',
+      sender_role: 'system',
+      sender: 'system',
+      message: noticeText,
+      text: noticeText,
+      is_system_notice: true,
+      created_at: nowIso,
+      timestamp: nowIso
+    };
+
+    setMessages((prev) => {
+      const updated = [...prev, sysMsg];
+      safeLocalStorageSetItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
     });
+
+    sendRealtimeWSMessage({
+      type: 'admin_chat_message',
+      message: sysMsg
+    });
+
+    try {
+      insertTableRow('admin_chat', LOCAL_STORAGE_KEY, sysMsg);
+    } catch (e) {
+      console.warn('Gagal menyimpan system notice:', e);
+    }
+  };
+
+  // Request Pin/Unpin action from message options menu
+  const handleRequestPinMessage = (msgId: string) => {
+    const isPinned = pinnedMsgIds.includes(msgId);
+    if (isPinned) {
+      // Unpin immediately
+      setPinnedMsgIds((prev) => prev.filter((id) => id !== msgId));
+      setPinnedItems((prev) => prev.filter((item) => item.id !== msgId));
+
+      const sysNoticeText = (currentUsername && currentUsername.includes('@'))
+        ? `${currentUsername} melepas sematan pesan.`
+        : (currentDisplayName && currentDisplayName !== 'Admin')
+          ? `${currentDisplayName} melepas sematan pesan.`
+          : 'Anda melepas sematan pesan.';
+
+      createSystemNotice(sysNoticeText);
+      showToast('Sematkan pesan dilepas');
+    } else {
+      if (pinnedMsgIds.length >= 3) {
+        showToast('Maksimal 3 pesan disematkan. Lepas sematan lain terlebih dahulu.');
+        return;
+      }
+      setPinDurationModalMsgId(msgId);
+    }
     setActiveMsgMenuId(null);
+  };
+
+  // Confirm pin with duration from popup modal
+  const handleConfirmPinWithDuration = () => {
+    if (!pinDurationModalMsgId) return;
+
+    let durationMs = 7 * 24 * 3600 * 1000;
+    let durationText = '7 hari';
+    if (selectedPinDuration === '24h') {
+      durationMs = 24 * 3600 * 1000;
+      durationText = '24 jam';
+    } else if (selectedPinDuration === '30d') {
+      durationMs = 30 * 24 * 3600 * 1000;
+      durationText = '30 hari';
+    }
+
+    const expiresAt = Date.now() + durationMs;
+    const userIdentifier = currentUsername || currentDisplayName || 'Anda';
+
+    const newItem: PinnedItem = {
+      id: pinDurationModalMsgId,
+      pinnedAt: new Date().toISOString(),
+      expiresAt,
+      durationText,
+      pinnedBy: userIdentifier
+    };
+
+    setPinnedItems((prev) => [...prev.filter((p) => p.id !== pinDurationModalMsgId), newItem]);
+    setPinnedMsgIds((prev) => [...prev.filter((id) => id !== pinDurationModalMsgId), pinDurationModalMsgId]);
+
+    const sysNoticeText = (currentUsername && currentUsername.includes('@'))
+      ? `${currentUsername} menyematkan pesan.`
+      : (currentDisplayName && currentDisplayName !== 'Admin')
+        ? `${currentDisplayName} menyematkan pesan.`
+        : 'Anda menyematkan pesan.';
+
+    createSystemNotice(sysNoticeText);
+    showToast(`Pesan disematkan selama ${durationText} 📌`);
+    setPinDurationModalMsgId(null);
+  };
+
+  const handleTogglePinMessage = (msgId: string) => {
+    handleRequestPinMessage(msgId);
   };
 
   // Unselect media and cancel selection mode when switching to Chat tab or closing modal
@@ -1387,57 +1531,108 @@ export default function AdminChatDrawer({
           </div>
         </div>
 
-        {/* PINNED MESSAGES BANNER BAR (SLOTS UP TO 3 PINNED MESSAGES) */}
-        {activeTab === 'chat' && pinnedMessages.length > 0 && (
-          <div className="bg-slate-50/95 border-b border-purple-100/90 px-3.5 py-2 shrink-0 flex items-center justify-between gap-2 shadow-2xs backdrop-blur-xs relative z-20">
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-100 text-purple-700 shrink-0 shadow-2xs">
-                <Pin className="h-3.5 w-3.5 fill-purple-600 text-purple-700" />
+        {/* WHATSAPP-STYLE PINNED MESSAGES BANNER */}
+        {activeTab === 'chat' && pinnedMessages.length > 0 && (() => {
+          const safePinnedIndex = pinnedMessages.length > 0 ? (activePinnedIndex % pinnedMessages.length) : 0;
+          const activePinnedMsg = pinnedMessages[safePinnedIndex] || null;
+          if (!activePinnedMsg) return null;
+
+          return (
+            <div className="bg-[#f0f2f5] border-b border-slate-200/90 px-3.5 py-2 shrink-0 flex items-center justify-between shadow-2xs relative z-20 select-none">
+              {/* Left Edge Vertical Marker, Pin Icon, and Message Text */}
+              <div
+                onClick={() => {
+                  if (pinnedMessages.length > 1) {
+                    const nextIdx = (safePinnedIndex + 1) % pinnedMessages.length;
+                    setActivePinnedIndex(nextIdx);
+                    handleShowInChat(pinnedMessages[nextIdx].id);
+                  } else {
+                    handleShowInChat(activePinnedMsg.id);
+                  }
+                }}
+                className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group"
+                title="Klik untuk melihat atau berpindah ke pesan disematkan"
+              >
+                {/* Vertical Marker Line */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {pinnedMessages.length > 1 ? (
+                    <div className="flex flex-col gap-0.5 justify-center h-6">
+                      {pinnedMessages.map((_, idx) => (
+                        <div
+                          key={idx}
+                          className={`w-[3.5px] rounded-full transition-all ${
+                            idx === safePinnedIndex ? 'h-3.5 bg-slate-800' : 'h-1.5 bg-slate-400/60'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="w-[3.5px] h-6 bg-slate-800 rounded-full shrink-0" />
+                  )}
+                </div>
+
+                {/* Pin Icon */}
+                <Pin className="h-4 w-4 text-slate-700 shrink-0 fill-slate-700/20 -rotate-12" />
+
+                {/* Message Content Preview */}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-slate-800 truncate leading-snug group-hover:text-slate-950">
+                    {activePinnedMsg.message || (activePinnedMsg.attachment ? `[File: ${activePinnedMsg.attachment.name}]` : 'Pesan')}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-900">
-                    Pesan Disematkan ({pinnedMessages.length}/3)
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mt-1 overflow-x-auto no-scrollbar pb-0.5">
-                  {pinnedMessages.map((pMsg) => {
-                    const pSender = pMsg.sender_name || pMsg.sender || 'Admin';
-                    const pText = pMsg.message || (pMsg.attachment ? `[File: ${pMsg.attachment.name}]` : 'Pesan');
-                    return (
-                      <div
-                        key={pMsg.id}
-                        onClick={() => handleShowInChat(pMsg.id)}
-                        className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white hover:bg-purple-50/80 border border-purple-200/80 text-left transition-all cursor-pointer shrink-0 max-w-[200px] sm:max-w-[240px] shadow-2xs group"
-                        title="Klik untuk menuju ke lokasi pesan ini"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-bold text-purple-900 group-hover:text-purple-700 truncate leading-tight">
-                            {pSender}
-                          </p>
-                          <p className="text-[10.5px] text-slate-600 group-hover:text-slate-900 truncate leading-tight mt-0.5 font-medium">
-                            {pText}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleTogglePinMessage(pMsg.id);
-                          }}
-                          className="p-0.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-colors shrink-0"
-                          title="Lepas sematan"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+
+              {/* Right Dropdown Chevron Button */}
+              <div className="relative shrink-0 ml-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowPinnedDropdown((prev) => !prev);
+                  }}
+                  className="p-1.5 rounded-full hover:bg-slate-200/80 text-slate-600 transition-colors cursor-pointer"
+                  title="Opsi sematan"
+                >
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showPinnedDropdown ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Dropdown Options Popup */}
+                {showPinnedDropdown && (
+                  <div
+                    ref={pinnedDropdownRef}
+                    className="absolute top-9 right-0 z-50 w-44 rounded-2xl bg-white p-1.5 shadow-xl border border-slate-200/90 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100"
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRequestPinMessage(activePinnedMsg.id);
+                        setShowPinnedDropdown(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
+                    >
+                      <PinOff className="h-4 w-4 text-rose-600 shrink-0" />
+                      <span>Lepas sematan</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShowInChat(activePinnedMsg.id);
+                        setShowPinnedDropdown(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer border-t border-slate-100 mt-1 pt-1.5"
+                    >
+                      <ArrowRight className="h-4 w-4 text-purple-600 shrink-0" />
+                      <span>Buka pesan</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* TAB 2: MEDIA CONTENT BODY (COMPACT DESKTOP ICON VIEW) */}
         {activeTab === 'media' ? (
@@ -1623,6 +1818,17 @@ export default function AdminChatDrawer({
                     )}
 
                     {group.msgs.map((msg) => {
+                      if (msg.is_system_notice || msg.sender_username === 'system' || msg.sender === 'system') {
+                        return (
+                          <div key={msg.id} id={`msg-${msg.id}`} className="flex justify-center my-2.5">
+                            <div className="bg-slate-200/80 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold px-3.5 py-1.5 rounded-2xl shadow-2xs backdrop-blur-xs flex items-center gap-1.5 border border-slate-300/60 max-w-[85%] text-center select-none transition-colors">
+                              <Pin className="h-3 w-3 text-slate-600 fill-slate-600 shrink-0" />
+                              <span>{msg.message}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+
                       const senderUsername = (msg.sender_username || (msg.sender && msg.sender.includes('@') ? msg.sender : '') || '').trim().toLowerCase();
                       const myUsername = (currentUsername || '').trim().toLowerCase();
 
@@ -2392,6 +2598,87 @@ export default function AdminChatDrawer({
           </div>
         )}
       </div>
+
+      {/* PIN DURATION SELECTION MODAL POPUP */}
+      {pinDurationModalMsgId && (
+        <div
+          className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150 pointer-events-auto"
+          onClick={() => setPinDurationModalMsgId(null)}
+        >
+          <div
+            className="bg-white rounded-3xl p-5 max-w-xs sm:max-w-sm w-full shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-purple-100 text-purple-700 shrink-0">
+                  <Pin className="h-4 w-4 fill-purple-600 text-purple-700" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Sematkan Pesan</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">Pilih durasi sematan pesan ini</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPinDurationModalMsgId(null)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 py-1">
+              {[
+                { id: '24h', label: '24 Jam', desc: 'Disematkan selama 24 jam' },
+                { id: '7d', label: '7 Hari', desc: 'Disematkan selama 7 hari' },
+                { id: '30d', label: '30 Hari', desc: 'Disematkan selama 30 hari' },
+              ].map((opt) => (
+                <label
+                  key={opt.id}
+                  onClick={() => setSelectedPinDuration(opt.id as any)}
+                  className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                    selectedPinDuration === opt.id
+                      ? 'border-purple-600 bg-purple-50/80 text-purple-950 shadow-xs ring-1 ring-purple-500'
+                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="pinDuration"
+                    value={opt.id}
+                    checked={selectedPinDuration === opt.id}
+                    onChange={() => setSelectedPinDuration(opt.id as any)}
+                    className="mt-0.5 accent-purple-600 h-4 w-4 shrink-0 cursor-pointer"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold leading-tight">{opt.label}</p>
+                    <p className="text-[10.5px] text-slate-500 mt-0.5 font-medium">{opt.desc}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setPinDurationModalMsgId(null)}
+                className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPinWithDuration}
+                className="px-4 py-2 text-xs font-bold rounded-xl bg-purple-600 text-white hover:bg-purple-700 active:scale-95 transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+              >
+                <Pin className="h-3.5 w-3.5 fill-white" />
+                <span>Sematkan</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal for Message Deletion */}
       {confirmDeleteId && (
