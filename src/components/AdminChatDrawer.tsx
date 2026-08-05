@@ -29,7 +29,10 @@ import {
   ArrowRight,
   Clock,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  Camera,
+  RotateCcw,
+  RefreshCw
 } from 'lucide-react';
 import { 
   fetchTableData, 
@@ -248,12 +251,13 @@ export default function AdminChatDrawer({
   };
 
   // Request Pin/Unpin action from message options menu
-  const handleRequestPinMessage = (msgId: string) => {
-    const isPinned = pinnedMsgIds.includes(msgId);
+  const handleRequestPinMessage = (msgId: string | number) => {
+    const idStr = String(msgId);
+    const isPinned = pinnedMsgIds.map(String).includes(idStr);
     if (isPinned) {
       // Unpin immediately
-      setPinnedMsgIds((prev) => prev.filter((id) => id !== msgId));
-      setPinnedItems((prev) => prev.filter((item) => item.id !== msgId));
+      setPinnedMsgIds((prev) => prev.filter((id) => String(id) !== idStr));
+      setPinnedItems((prev) => prev.filter((item) => String(item.id) !== idStr));
 
       const sysNoticeText = (currentUsername && currentUsername.includes('@'))
         ? `${currentUsername} melepas sematan pesan.`
@@ -268,7 +272,7 @@ export default function AdminChatDrawer({
         showToast('Maksimal 3 pesan disematkan. Lepas sematan lain terlebih dahulu.');
         return;
       }
-      setPinDurationModalMsgId(msgId);
+      setPinDurationModalMsgId(idStr);
     }
     setActiveMsgMenuId(null);
   };
@@ -409,6 +413,28 @@ export default function AdminChatDrawer({
 
   const rawFileInputRef = useRef<HTMLInputElement>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const cameraFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Camera Modal & Capture State
+  const [showCameraModal, setShowCameraModal] = useState<boolean>(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('environment');
+  const [capturedImageDataUrl, setCapturedImageDataUrl] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Scroll to Bottom Floating Button State
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState<boolean>(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleChatScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+      const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+      setShowScrollBottomBtn(distanceFromBottom > 120);
+    }
+  };
 
   // Active User Info
   const currentUsername = localStorage.getItem('smartsantri_active_username') || '';
@@ -747,7 +773,115 @@ export default function AdminChatDrawer({
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Camera Handler Methods
+  const startCameraStream = async (facingMode: 'user' | 'environment') => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+
+    setCameraError(null);
+    setCapturedImageDataUrl(null);
+
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Kamera tidak didukung pada browser ini.');
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+
+      setCameraStream(stream);
+      setCameraFacingMode(facingMode);
+    } catch (err: any) {
+      console.error('Gagal membuka kamera:', err);
+      setCameraError(err.message || 'Izin kamera ditolak atau kamera tidak ditemukan.');
+    }
+  };
+
+  useEffect(() => {
+    if (showCameraModal && cameraStream && videoRef.current && !capturedImageDataUrl) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [showCameraModal, cameraStream, capturedImageDataUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
+  const handleOpenCamera = () => {
+    setShowAttachMenu(false);
+    setShowCameraModal(true);
+    startCameraStream('environment');
+  };
+
+  const handleCloseCameraModal = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+    setShowCameraModal(false);
+    setCapturedImageDataUrl(null);
+    setCameraError(null);
+  };
+
+  const handleCapturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+      setCapturedImageDataUrl(dataUrl);
+    }
+  };
+
+  const handleConfirmCameraPhoto = () => {
+    if (!capturedImageDataUrl) return;
+
+    const approxBytes = Math.round((capturedImageDataUrl.length * 3) / 4);
+    setPendingAttachment({
+      name: `foto_kamera_${Date.now()}.jpg`,
+      url: capturedImageDataUrl,
+      type: 'image',
+      fileType: 'image',
+      size: approxBytes,
+      isCompressed: false
+    });
+
+    handleCloseCameraModal();
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  };
+
+  const handleToggleCameraFacingMode = () => {
+    const nextMode = cameraFacingMode === 'user' ? 'environment' : 'user';
+    startCameraStream(nextMode);
   };
 
   // Helper for file type classification
@@ -1267,7 +1401,7 @@ export default function AdminChatDrawer({
   });
 
   // Pinned messages list
-  const pinnedMessages = messages.filter(m => pinnedMsgIds.includes(m.id));
+  const pinnedMessages = messages.filter(m => pinnedMsgIds.map(String).includes(String(m.id)));
 
   // Selected media message object for Action Panel
   const selectedMediaMsg = selectedMediaId ? messages.find(m => m.id === selectedMediaId) : null;
@@ -1773,7 +1907,11 @@ export default function AdminChatDrawer({
           </div>
         ) : (
           /* TAB 1: MAIN CHAT MESSAGES LIST */
-          <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4 scrollbar-thin">
+          <div 
+            ref={scrollContainerRef}
+            onScroll={handleChatScroll}
+            className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4 scrollbar-thin relative"
+          >
             {loading ? (
               <div className="flex h-full items-center justify-center text-slate-400 text-xs font-medium py-12">
                 Memuat percakapan...
@@ -1789,14 +1927,32 @@ export default function AdminChatDrawer({
               </div>
             ) : (
               (() => {
+                // Sort messages chronologically ascending by date/timestamp
+                const sortedFilteredMessages = [...filteredMessages].sort((a, b) => {
+                  const parseTime = (isoStr?: string) => {
+                    if (!isoStr) return 0;
+                    let str = String(isoStr).trim();
+                    if (str.includes(' ') && !str.includes('T')) {
+                      str = str.replace(' ', 'T');
+                    }
+                    const t = new Date(str).getTime();
+                    return isNaN(t) ? 0 : t;
+                  };
+                  return parseTime(a.created_at || a.timestamp) - parseTime(b.created_at || b.timestamp);
+                });
+
                 // Group messages by date
                 const groupedMessages: { dateKey: string; label: string; msgs: ChatMessage[] }[] = [];
-                filteredMessages.forEach((msg) => {
-                  const d = new Date(msg.created_at || Date.now());
+                sortedFilteredMessages.forEach((msg) => {
+                  let str = String(msg.created_at || msg.timestamp || '').trim();
+                  if (str.includes(' ') && !str.includes('T')) {
+                    str = str.replace(' ', 'T');
+                  }
+                  const d = new Date(str);
                   const dateKey = isNaN(d.getTime())
                     ? 'unknown'
                     : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                  const label = getDateLabel(msg.created_at);
+                  const label = getDateLabel(msg.created_at || msg.timestamp);
 
                   const lastGroup = groupedMessages[groupedMessages.length - 1];
                   if (lastGroup && lastGroup.dateKey === dateKey) {
@@ -1855,10 +2011,12 @@ export default function AdminChatDrawer({
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setActiveMsgMenuId(activeMsgMenuId === msg.id ? null : msg.id);
+                                  setActiveMsgMenuId(String(activeMsgMenuId) === String(msg.id) ? null : String(msg.id));
                                 }}
-                                className={`absolute top-1.5 right-1.5 z-20 p-1 rounded-full transition-all cursor-pointer opacity-0 group-hover:opacity-100 ${
-                                  activeMsgMenuId === msg.id ? 'opacity-100 bg-black/10' : ''
+                                className={`absolute top-1.5 right-1.5 z-20 p-1 rounded-full transition-all cursor-pointer ${
+                                  String(activeMsgMenuId) === String(msg.id)
+                                    ? 'opacity-100 bg-black/10'
+                                    : 'opacity-70 sm:opacity-0 group-hover:opacity-100 hover:opacity-100'
                                 } text-purple-800 hover:bg-purple-200/80`}
                                 title="Opsi Pesan"
                               >
@@ -1866,7 +2024,7 @@ export default function AdminChatDrawer({
                               </button>
 
                               {/* Dropdown Options Popup Menu */}
-                              {activeMsgMenuId === msg.id && (
+                              {String(activeMsgMenuId) === String(msg.id) && (
                                 <div 
                                   ref={msgMenuRef}
                                   className="absolute top-8 right-1 z-50 w-40 rounded-2xl bg-white p-1.5 shadow-2xl border border-slate-200 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100"
@@ -1887,13 +2045,13 @@ export default function AdminChatDrawer({
                                     }}
                                     className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
                                   >
-                                    <Pin className={`h-3.5 w-3.5 ${pinnedMsgIds.includes(msg.id) ? 'fill-purple-600 text-purple-600' : 'text-purple-600'}`} />
-                                    <span>{pinnedMsgIds.includes(msg.id) ? 'Lepas Sematan' : 'Sematkan'}</span>
+                                    <Pin className={`h-3.5 w-3.5 ${pinnedMsgIds.map(String).includes(String(msg.id)) ? 'fill-purple-600 text-purple-600' : 'text-purple-600'}`} />
+                                    <span>{pinnedMsgIds.map(String).includes(String(msg.id)) ? 'Lepas Sematan' : 'Sematkan'}</span>
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      handleCopyText(msg.message, msg.id);
+                                      handleCopyText(msg.message, String(msg.id));
                                       setActiveMsgMenuId(null);
                                     }}
                                     className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
@@ -1915,7 +2073,7 @@ export default function AdminChatDrawer({
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setConfirmDeleteId(msg.id);
+                                      setConfirmDeleteId(String(msg.id));
                                       setActiveMsgMenuId(null);
                                     }}
                                     className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer border-t border-slate-100 mt-1 pt-1.5"
@@ -2027,10 +2185,12 @@ export default function AdminChatDrawer({
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setActiveMsgMenuId(activeMsgMenuId === msg.id ? null : msg.id);
+                                      setActiveMsgMenuId(String(activeMsgMenuId) === String(msg.id) ? null : String(msg.id));
                                     }}
-                                    className={`absolute top-1.5 right-1.5 z-20 p-1 rounded-full transition-all cursor-pointer opacity-0 group-hover:opacity-100 ${
-                                      activeMsgMenuId === msg.id ? 'opacity-100 bg-black/10' : ''
+                                    className={`absolute top-1.5 right-1.5 z-20 p-1 rounded-full transition-all cursor-pointer ${
+                                      String(activeMsgMenuId) === String(msg.id)
+                                        ? 'opacity-100 bg-black/10'
+                                        : 'opacity-70 sm:opacity-0 group-hover:opacity-100 hover:opacity-100'
                                     } text-slate-500 hover:bg-slate-200/80`}
                                     title="Opsi Pesan"
                                   >
@@ -2038,7 +2198,7 @@ export default function AdminChatDrawer({
                                   </button>
 
                                   {/* Dropdown Options Popup Menu */}
-                                  {activeMsgMenuId === msg.id && (
+                                  {String(activeMsgMenuId) === String(msg.id) && (
                                     <div 
                                       ref={msgMenuRef}
                                       className="absolute top-8 right-1 z-50 w-40 rounded-2xl bg-white p-1.5 shadow-2xl border border-slate-200 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100"
@@ -2059,13 +2219,13 @@ export default function AdminChatDrawer({
                                         }}
                                         className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
                                       >
-                                        <Pin className={`h-3.5 w-3.5 ${pinnedMsgIds.includes(msg.id) ? 'fill-purple-600 text-purple-600' : 'text-purple-600'}`} />
-                                        <span>{pinnedMsgIds.includes(msg.id) ? 'Lepas Sematan' : 'Sematkan'}</span>
+                                        <Pin className={`h-3.5 w-3.5 ${pinnedMsgIds.map(String).includes(String(msg.id)) ? 'fill-purple-600 text-purple-600' : 'text-purple-600'}`} />
+                                        <span>{pinnedMsgIds.map(String).includes(String(msg.id)) ? 'Lepas Sematan' : 'Sematkan'}</span>
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          handleCopyText(msg.message, msg.id);
+                                          handleCopyText(msg.message, String(msg.id));
                                           setActiveMsgMenuId(null);
                                         }}
                                         className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors cursor-pointer"
@@ -2077,7 +2237,7 @@ export default function AdminChatDrawer({
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            setConfirmDeleteId(msg.id);
+                                            setConfirmDeleteId(String(msg.id));
                                             setActiveMsgMenuId(null);
                                           }}
                                           className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer border-t border-slate-100 mt-1 pt-1.5"
@@ -2391,6 +2551,21 @@ export default function AdminChatDrawer({
                           <p className="text-[10px] text-slate-400">Upload foto atau gambar</p>
                         </div>
                       </button>
+
+                      {/* Option 3: Kamera */}
+                      <button
+                        type="button"
+                        onClick={handleOpenCamera}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left hover:bg-slate-50 transition-colors cursor-pointer group border-t border-slate-100 mt-1 pt-2.5"
+                      >
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100">
+                          <Camera className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">Kamera</p>
+                          <p className="text-[10px] text-slate-400">Buka kamera & ambil foto</p>
+                        </div>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -2410,6 +2585,18 @@ export default function AdminChatDrawer({
             </form>
 
           </div>
+        )}
+
+        {/* Floating Scroll to Bottom Button (WhatsApp Style) */}
+        {activeTab === 'chat' && showScrollBottomBtn && (
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            className="absolute bottom-20 right-5 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow-xl border border-slate-200/90 hover:bg-slate-50 hover:text-purple-700 hover:scale-105 active:scale-95 transition-all cursor-pointer group animate-in fade-in zoom-in-95 duration-150"
+            title="Gulir ke paling bawah"
+          >
+            <ChevronDown className="h-5 w-5 transition-transform group-hover:translate-y-0.5" />
+          </button>
         )}
 
         {/* MEDIA ACTION PANEL (Panel Aksi) - Appears at the bottom when in multi-select mode OR when a single item is highlighted */}
@@ -2753,6 +2940,152 @@ export default function AdminChatDrawer({
               >
                 Hapus Semua
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden File Inputs for Attachment Uploads */}
+      <input
+        ref={rawFileInputRef}
+        type="file"
+        onChange={handleRawFileUpload}
+        className="hidden"
+      />
+      <input
+        ref={imageFileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleCompressedImageUpload}
+        className="hidden"
+      />
+      <input
+        ref={cameraFileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleCompressedImageUpload}
+        className="hidden"
+      />
+
+      {/* CAMERA CAPTURE MODAL */}
+      {showCameraModal && (
+        <div 
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 animate-in fade-in duration-150 pointer-events-auto"
+          onClick={handleCloseCameraModal}
+        >
+          <div 
+            className="bg-white rounded-3xl p-4 sm:p-5 max-w-md w-full shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 shrink-0">
+                  <Camera className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Kamera</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">Ambil foto untuk dikirim sebagai lampiran chat</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseCameraModal}
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Main Preview / Video Canvas */}
+            <div className="relative rounded-2xl overflow-hidden bg-black flex items-center justify-center min-h-[260px] sm:min-h-[320px] shadow-inner">
+              {capturedImageDataUrl ? (
+                /* Captured Image Preview */
+                <img 
+                  src={capturedImageDataUrl} 
+                  alt="Hasil Kamera" 
+                  className="w-full h-full max-h-[320px] object-contain rounded-2xl"
+                />
+              ) : cameraError ? (
+                /* Error State */
+                <div className="p-6 text-center text-white space-y-3">
+                  <Camera className="h-10 w-10 text-rose-400 mx-auto" />
+                  <p className="text-xs text-rose-200 font-semibold">{cameraError}</p>
+                  <button
+                    type="button"
+                    onClick={() => cameraFileInputRef.current?.click()}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md inline-flex items-center gap-2"
+                  >
+                    <Camera className="h-4 w-4" />
+                    <span>Gunakan Kamera Perangkat</span>
+                  </button>
+                </div>
+              ) : (
+                /* Live Stream Video */
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full max-h-[320px] object-cover rounded-2xl"
+                  />
+                  {/* Camera Switch Facing Mode Button */}
+                  <button
+                    type="button"
+                    onClick={handleToggleCameraFacingMode}
+                    className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-md transition-all cursor-pointer shadow-md"
+                    title="Ganti Kamera Depan/Belakang"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Controls */}
+            <div className="flex items-center justify-between pt-1">
+              {capturedImageDataUrl ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setCapturedImageDataUrl(null)}
+                    className="px-4 py-2.5 text-xs font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    <span>Foto Ulang</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmCameraPhoto}
+                    className="px-5 py-2.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95 transition-all cursor-pointer shadow-md flex items-center gap-2"
+                  >
+                    <Check className="h-4 w-4" />
+                    <span>Gunakan Foto Ini</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleCloseCameraModal}
+                    className="px-4 py-2.5 text-xs font-semibold rounded-xl text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  {!cameraError && (
+                    <button
+                      type="button"
+                      onClick={handleCapturePhoto}
+                      className="px-6 py-2.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95 transition-all cursor-pointer shadow-md flex items-center gap-2"
+                    >
+                      <Camera className="h-4 w-4" />
+                      <span>Ambil Foto</span>
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
