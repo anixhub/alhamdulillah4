@@ -1786,90 +1786,7 @@ export default function KamarSub({
                 </div>
               </div>
 
-              {/* Bulk Action Bar Banner */}
-              {(isSelectionMode || selectedStudentIds.length > 0) && (
-                <div className="flex flex-wrap items-center justify-between gap-3 bg-purple-50 border border-purple-200 p-3 rounded-xl animate-fade-in">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-purple-600 animate-pulse" />
-                    <span className="text-xs font-bold text-purple-950">
-                      {selectedStudentIds.length} Santri Terpilih
-                    </span>
-                  </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={() => {
-                        if (selectedStudentIds.length === 0) {
-                          showToast('Pilih setidaknya satu santri terlebih dahulu.');
-                          return;
-                        }
-                        setIsBulkTransferOpen(true);
-                      }}
-                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-3xs"
-                    >
-                      <ArrowLeftRight className="w-3.5 h-3.5" />
-                      <span>Pindah Kamar</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        if (selectedStudentIds.length === 0) {
-                          showToast('Pilih setidaknya satu santri terlebih dahulu.');
-                          return;
-                        }
-                        askConfirmation(
-                          'Hapus Lemari Santri Terpilih',
-                          `Apakah Anda yakin ingin menghapus nomor lemari dari ${selectedStudentIds.length} santri yang dipilih?`,
-                          () => {
-                            selectedStudentIds.forEach(id => {
-                              onUpdateSantriRoom(id, activeRoomForDetail.nama, '');
-                            });
-                            setSelectedStudentIds([]);
-                            showToast(`Nomor lemari ${selectedStudentIds.length} santri berhasil dihapus.`);
-                          }
-                        );
-                      }}
-                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-3xs"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Hapus Lemari</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        if (selectedStudentIds.length === 0) {
-                          showToast('Pilih setidaknya satu santri terlebih dahulu.');
-                          return;
-                        }
-                        askConfirmation(
-                          'Keluarkan Santri Terpilih',
-                          `Apakah Anda yakin ingin mengeluarkan ${selectedStudentIds.length} santri dari kamar ini?`,
-                          () => {
-                            selectedStudentIds.forEach(id => onUpdateSantriRoom(id, ''));
-                            setSelectedStudentIds([]);
-                            setIsSelectionMode(false);
-                            showToast(`${selectedStudentIds.length} santri dikeluarkan dari kamar.`);
-                          }
-                        );
-                      }}
-                      className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-3xs"
-                    >
-                      <UserMinus className="w-3.5 h-3.5" />
-                      <span>Keluarkan</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setSelectedStudentIds([]);
-                        setIsSelectionMode(false);
-                      }}
-                      className="px-2.5 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
-                    >
-                      Batal
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* DETAIL VIEW CONTENT: SLOT LEMARI VISUALIZATION */}
@@ -2184,7 +2101,18 @@ export default function KamarSub({
                                             <td className="py-3 px-3.5">
                                               <div className="flex items-center justify-between gap-2.5 min-w-0">
                                                 <div
-                                                  onClick={() => setSelectedSantriForDetail(s)}
+                                                  onClick={(e) => {
+                                                     if (isSelectionMode) {
+                                                       e.stopPropagation();
+                                                       if (selectedStudentIds.includes(s.id)) {
+                                                         setSelectedStudentIds(prev => prev.filter(id => id !== s.id));
+                                                       } else {
+                                                         setSelectedStudentIds(prev => [...prev, s.id]);
+                                                       }
+                                                     } else {
+                                                       setSelectedSantriForDetail(s);
+                                                     }
+                                                   }}
                                                   className="flex items-center gap-2.5 cursor-pointer group min-w-0"
                                                   title="Klik untuk lihat biodata"
                                                 >
@@ -3265,6 +3193,113 @@ export default function KamarSub({
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Minimalist Batch Action Bar */}
+      <AnimatePresence>
+        {(isSelectionMode || selectedStudentIds.length > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.95 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md text-white border border-slate-700/80 shadow-2xl rounded-2xl px-4 py-2.5 text-xs font-sans max-w-[92vw] sm:max-w-max"
+          >
+            {/* Left side: Count selected */}
+            <div className="flex items-center gap-2 border-r border-slate-700 pr-3">
+              <div className="h-5 w-5 rounded-full bg-purple-500 text-white font-black text-[10px] flex items-center justify-center shrink-0">
+                {selectedStudentIds.length}
+              </div>
+              <span className="font-bold whitespace-nowrap text-slate-200">
+                {selectedStudentIds.length} Santri Dipilih
+              </span>
+            </div>
+
+            {/* Right side: Action buttons */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedStudentIds.length === 0) {
+                    showToast('Pilih setidaknya satu santri terlebih dahulu.');
+                    return;
+                  }
+                  setIsBulkTransferOpen(true);
+                }}
+                disabled={selectedStudentIds.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer border-none"
+                title="Pindah Kamar Masal"
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+                <span>Pindah Kamar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedStudentIds.length === 0) {
+                    showToast('Pilih setidaknya satu santri terlebih dahulu.');
+                    return;
+                  }
+                  askConfirmation(
+                    'Hapus Lemari Santri Terpilih',
+                    `Apakah Anda yakin ingin menghapus nomor lemari dari ${selectedStudentIds.length} santri yang dipilih?`,
+                    () => {
+                      selectedStudentIds.forEach(id => {
+                        onUpdateSantriRoom(id, activeRoomForDetail?.nama || '', '');
+                      });
+                      setSelectedStudentIds([]);
+                      showToast(`Nomor lemari ${selectedStudentIds.length} santri berhasil dihapus.`);
+                    }
+                  );
+                }}
+                disabled={selectedStudentIds.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer border-none"
+                title="Hapus Lemari Masal"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Hapus Lemari</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedStudentIds.length === 0) {
+                    showToast('Pilih setidaknya satu santri terlebih dahulu.');
+                    return;
+                  }
+                  askConfirmation(
+                    'Keluarkan Santri Terpilih',
+                    `Apakah Anda yakin ingin mengeluarkan ${selectedStudentIds.length} santri dari kamar ini?`,
+                    () => {
+                      selectedStudentIds.forEach(id => onUpdateSantriRoom(id, ''));
+                      setSelectedStudentIds([]);
+                      setIsSelectionMode(false);
+                      showToast(`${selectedStudentIds.length} santri dikeluarkan dari kamar.`);
+                    }
+                  );
+                }}
+                disabled={selectedStudentIds.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer border-none"
+                title="Keluarkan Masal"
+              >
+                <UserMinus className="h-3.5 w-3.5" />
+                <span>Keluarkan</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedStudentIds([]);
+                  setIsSelectionMode(false);
+                }}
+                className="px-2.5 py-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white font-bold transition-all cursor-pointer border-none bg-transparent"
+                title="Tutup Mode Pilih"
+              >
+                Batal
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

@@ -23,7 +23,8 @@ import {
   Layers,
   Eye,
   Upload,
-  Trash2
+  Trash2,
+  Maximize2
 } from 'lucide-react';
 import { Santri, BendaharaRecord, KeamananRecord, Kamar, Kompleks, Kelas, Lembaga, KelompokRombel, RombelAssignment, KategoriRombel } from '../../types';
 import { renderSantriAvatar, isCustomPasFoto, calculateRealtimeAge } from '../SekretarisHelper';
@@ -122,6 +123,7 @@ export default function SantriDetailModal({ selectedSantri, onClose, onUpdateSan
   const [isUploadingPasFoto, setIsUploadingPasFoto] = useState(false);
   const [isUploadingDoc, setIsUploadingDoc] = useState<Record<string, boolean>>({});
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
+  const [isPhotoPreviewOpen, setIsPhotoPreviewOpen] = useState(false);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   const handleUploadDoc = async (fileKey: string, file: File) => {
@@ -492,10 +494,25 @@ export default function SantriDetailModal({ selectedSantri, onClose, onUpdateSan
             {/* Profile Row */}
             <div className="flex items-center gap-4 sm:gap-5">
               {/* Profile Avatar Frame (Circular exactly like image) */}
-              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border border-slate-200 shrink-0 shadow-inner bg-slate-50 flex items-center justify-center">
+              <div 
+                className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border border-slate-200 shrink-0 shadow-inner bg-slate-50 flex items-center justify-center ${
+                  isCustomPasFoto(localSantri.filePasFoto) ? 'cursor-pointer group hover:ring-4 hover:ring-indigo-300 transition-all' : ''
+                }`}
+                onClick={() => {
+                  if (isCustomPasFoto(localSantri.filePasFoto)) {
+                    setIsPhotoPreviewOpen(true);
+                  }
+                }}
+                title={isCustomPasFoto(localSantri.filePasFoto) ? "Klik untuk preview fullscreen pas foto" : "Belum ada pas foto"}
+              >
                 <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
                   {renderSantriAvatar(localSantri, "w-full h-full object-cover", false, false)}
                 </div>
+                {isCustomPasFoto(localSantri.filePasFoto) && (
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center text-white">
+                    <Maximize2 className="w-6 h-6" />
+                  </div>
+                )}
                 {(() => {
                   const age = calculateRealtimeAge(localSantri.tanggalLahir);
                   if (age === null || age === undefined) return null;
@@ -1227,6 +1244,78 @@ export default function SantriDetailModal({ selectedSantri, onClose, onUpdateSan
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Fullscreen Photo Preview Modal */}
+      <AnimatePresence>
+        {isPhotoPreviewOpen && isCustomPasFoto(localSantri.filePasFoto) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-8 select-none"
+            onClick={() => setIsPhotoPreviewOpen(false)}
+          >
+            {/* Top Control Bar */}
+            <div 
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-3 z-10"
+              onClick={e => e.stopPropagation()}
+            >
+              <a
+                href={getApiUrl(localSantri.filePasFoto!)}
+                download={`pas_foto_${localSantri.nama || 'santri'}.jpg`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all border border-white/20 cursor-pointer shadow-lg"
+                title="Unduh Gambar"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Unduh</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm("Apakah Anda yakin ingin menghapus pas foto santri ini?")) {
+                    handleRemovePasFoto();
+                    setIsPhotoPreviewOpen(false);
+                  }
+                }}
+                className="flex items-center gap-2 bg-rose-500/85 hover:bg-rose-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all border border-rose-400/30 cursor-pointer shadow-lg"
+                title="Hapus Gambar"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Hapus</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsPhotoPreviewOpen(false)}
+                className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all border border-white/20 cursor-pointer shadow-lg"
+                title="Tutup Preview"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Centered Image Container */}
+            <div 
+              className="relative max-w-4xl max-h-[80vh] flex flex-col items-center justify-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <img
+                src={getApiUrl(localSantri.filePasFoto!)}
+                alt={localSantri.nama}
+                className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+                referrerPolicy="no-referrer"
+              />
+              <div className="mt-4 text-center">
+                <h3 className="text-white font-bold text-base sm:text-lg">{localSantri.nama}</h3>
+                <p className="text-white/70 text-xs mt-0.5">NIS: {localSantri.nis || '-'}</p>
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </AnimatePresence>

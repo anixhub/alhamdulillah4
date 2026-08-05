@@ -194,3 +194,20 @@ input::-webkit-credentials-auto-fill-button {
   border-bottom: 2px solid #e2e8f0; /* matches slate-200 */
 }
 
+/* Minimalist aesthetic custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(13, 138, 104, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(13, 138, 104, 0.5);
+}
+
+

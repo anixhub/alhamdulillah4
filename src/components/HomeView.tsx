@@ -1249,14 +1249,14 @@ export default function HomeView({
       </div>
 
       {/* 4. Bottom Full-Width Row Grid: Monitor Emis Terdaftar (5 Cols) + Top 10 Pelanggaran (7 Cols) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-stretch">
         
         {/* Monitor Emis Terdaftar (5 Cols - Matches Data Statistik Santri width above) */}
-        <div className="md:col-span-5 bg-white rounded-2xl border border-emerald-100/80 shadow-3xs overflow-hidden flex flex-col justify-between">
-          <div className="bg-[#0D8A68] text-white text-center text-xs font-extrabold py-2.5 tracking-wide">
+        <div className="md:col-span-5 bg-white rounded-2xl border border-emerald-100/80 shadow-3xs overflow-hidden flex flex-col">
+          <div className="bg-[#0D8A68] text-white text-center text-xs font-extrabold py-2.5 tracking-wide shrink-0">
             Monitor Emis Terdaftar
           </div>
-          <div className="p-4 space-y-3.5 text-xs font-bold flex-1 flex flex-col justify-center">
+          <div className="p-4 space-y-3.5 text-xs font-bold flex flex-col justify-start">
             {/* Row 1: Santri Aktif Putra */}
             <div>
               <div className="flex justify-between items-center mb-1">
@@ -1308,9 +1308,9 @@ export default function HomeView({
         </div>
 
         {/* Top 10 Pelanggaran / Pelanggar Card */}
-        <div className="md:col-span-7 bg-[#008265] rounded-3xl p-4 md:p-5 text-white shadow-md border border-emerald-600/40 flex flex-col justify-between min-h-[310px] relative overflow-hidden">
+        <div className="md:col-span-7 bg-[#008265] rounded-3xl p-4 md:p-5 text-white shadow-md border border-emerald-600/40 flex flex-col justify-between h-full relative overflow-hidden">
           {/* Header Top Pills Tabs (Top 10 Pelanggaran & Top 10 Pelanggar) */}
-          <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-emerald-600/30">
+          <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-emerald-600/30 shrink-0">
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => setViolationsTab('pelanggaran')}
@@ -1344,103 +1344,103 @@ export default function HomeView({
             </button>
           </div>
 
-          {/* List Content - RATA ATAS dengan rounded-full pill items seperti di gambar */}
-          <div className="space-y-2 flex-1 flex flex-col justify-start">
+          {/* List Content - RATA ATAS dengan rounded-full pill items dan scrollable */}
+          <div className="space-y-2 overflow-y-auto max-h-[210px] pr-1 flex-1">
             {violationsTab === 'pelanggaran' ? (
-              (topViolationTypes.length > 0 ? topViolationTypes.slice(0, 5) : [
-                { jenis: 'Terlambat Berjamaah', count: 12, poin: 120 },
-                { jenis: 'Tidak Memakai Pakaian Rapi', count: 9, poin: 90 },
-                { jenis: 'Keluar Tanpa Izin', count: 7, poin: 105 },
-                { jenis: 'Membawa HP / Elektronik', count: 5, poin: 150 },
-                { jenis: 'Tidak Mengikuti Pengajian', count: 4, poin: 40 }
-              ]).map((item, idx) => {
-                const rank = idx + 1;
-                let rankNumColor = 'text-[#008265]';
-                if (rank === 1) rankNumColor = 'text-[#FF3B3B]';
-                else if (rank === 2) rankNumColor = 'text-[#FF8C00]';
-                else if (rank === 3) rankNumColor = 'text-[#EAB308]';
+              topViolationTypes.length > 0 ? (
+                topViolationTypes.slice(0, 10).map((item, idx) => {
+                  const rank = idx + 1;
+                  let rankNumColor = 'text-[#008265]';
+                  if (rank === 1) rankNumColor = 'text-[#FF3B3B]';
+                  else if (rank === 2) rankNumColor = 'text-[#FF8C00]';
+                  else if (rank === 3) rankNumColor = 'text-[#EAB308]';
 
-                return (
-                  <div 
-                    key={idx}
-                    onClick={() => onChangeModule('keamanan')}
-                    className="bg-[#12A07E] hover:bg-[#0F9172] border border-emerald-400/20 rounded-full py-2 px-3.5 flex items-center justify-between cursor-pointer transition-all group shadow-2xs"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className={`w-7 h-7 rounded-full bg-white ${rankNumColor} font-black flex items-center justify-center text-sm shrink-0 shadow-xs`}>
-                        {rank}
-                      </span>
-                      <span className="text-white font-extrabold text-sm md:text-base truncate group-hover:text-yellow-200 transition-colors">
-                        {item.jenis}
-                      </span>
-                    </div>
+                  return (
+                    <div 
+                      key={idx}
+                      onClick={() => onChangeModule('keamanan')}
+                      className="bg-[#12A07E] hover:bg-[#0F9172] border border-emerald-400/20 rounded-full py-2 px-3.5 flex items-center justify-between cursor-pointer transition-all group shadow-2xs"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`w-7 h-7 rounded-full bg-white ${rankNumColor} font-black flex items-center justify-center text-sm shrink-0 shadow-xs`}>
+                          {rank}
+                        </span>
+                        <span className="text-white font-extrabold text-sm md:text-base truncate group-hover:text-yellow-200 transition-colors">
+                          {item.jenis}
+                        </span>
+                      </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[#80ED99] font-black text-sm md:text-base">{item.count}x</span>
-                      <span className="text-white/90 text-xs font-semibold italic mr-1">Kejadian</span>
-                      <span className="text-[#80ED99] font-black text-sm md:text-base">{item.poin}</span>
-                      <span className="text-white/90 text-xs font-semibold italic">Poin</span>
-                      <ArrowUpRight className="w-4 h-4 text-white ml-1 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform stroke-[2.5]" />
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[#80ED99] font-black text-sm md:text-base">{item.count}x</span>
+                        <span className="text-white/90 text-xs font-semibold italic mr-1">Kejadian</span>
+                        <span className="text-[#80ED99] font-black text-sm md:text-base">{item.poin}</span>
+                        <span className="text-white/90 text-xs font-semibold italic">Poin</span>
+                        <ArrowUpRight className="w-4 h-4 text-white ml-1 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform stroke-[2.5]" />
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full py-10 text-white/80 text-xs font-semibold">
+                  <span>Belum ada data catatan pelanggaran</span>
+                </div>
+              )
             ) : (
-              (topViolators.length > 0 ? topViolators.slice(0, 5) : [
-                { nama: 'David Mustofa', poin: 120, count: 5 },
-                { nama: 'Hamzah Asrori', poin: 110, count: 5 },
-                { nama: 'Ahmad', poin: 110, count: 5 },
-                { nama: 'Zain', poin: 90, count: 5 },
-                { nama: 'Sabiq', poin: 87, count: 5 }
-              ]).map((item, idx) => {
-                const rank = idx + 1;
-                let rankNumColor = 'text-[#008265]';
-                if (rank === 1) rankNumColor = 'text-[#FF3B3B]';
-                else if (rank === 2) rankNumColor = 'text-[#FF8C00]';
-                else if (rank === 3) rankNumColor = 'text-[#EAB308]';
+              topViolators.length > 0 ? (
+                topViolators.slice(0, 10).map((item, idx) => {
+                  const rank = idx + 1;
+                  let rankNumColor = 'text-[#008265]';
+                  if (rank === 1) rankNumColor = 'text-[#FF3B3B]';
+                  else if (rank === 2) rankNumColor = 'text-[#FF8C00]';
+                  else if (rank === 3) rankNumColor = 'text-[#EAB308]';
 
-                return (
-                  <div 
-                    key={idx}
-                    onClick={() => {
-                      const found = santriList.find(s => s.nama.toLowerCase() === item.nama.toLowerCase());
-                      if (found) {
-                        setSelectedSantriForDetail(found);
-                      } else {
-                        setSelectedSantriForDetail({
-                          id: 'fallback-' + idx,
-                          nis: '-',
-                          nama: item.nama,
-                          kelas: '-',
-                          kamar: '-',
-                          asal: '-',
-                          gender: 'Putra',
-                          tanggalMasuk: '-',
-                          statusKeanggotaan: 'Aktif'
-                        });
-                      }
-                    }}
-                    className="bg-[#12A07E] hover:bg-[#0F9172] border border-emerald-400/20 rounded-full py-2 px-3.5 flex items-center justify-between cursor-pointer transition-all group shadow-2xs"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className={`w-7 h-7 rounded-full bg-white ${rankNumColor} font-black flex items-center justify-center text-sm shrink-0 shadow-xs`}>
-                        {rank}
-                      </span>
-                      <span className="text-white font-extrabold text-sm md:text-base truncate group-hover:text-yellow-200 transition-colors">
-                        {item.nama}
-                      </span>
-                    </div>
+                  return (
+                    <div 
+                      key={idx}
+                      onClick={() => {
+                        const found = santriList.find(s => s.nama.toLowerCase() === item.nama.toLowerCase());
+                        if (found) {
+                          setSelectedSantriForDetail(found);
+                        } else {
+                          setSelectedSantriForDetail({
+                            id: 'fallback-' + idx,
+                            nis: '-',
+                            nama: item.nama,
+                            kelas: '-',
+                            kamar: '-',
+                            asal: '-',
+                            gender: 'Putra',
+                            tanggalMasuk: '-',
+                            statusKeanggotaan: 'Aktif'
+                          });
+                        }
+                      }}
+                      className="bg-[#12A07E] hover:bg-[#0F9172] border border-emerald-400/20 rounded-full py-2 px-3.5 flex items-center justify-between cursor-pointer transition-all group shadow-2xs"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`w-7 h-7 rounded-full bg-white ${rankNumColor} font-black flex items-center justify-center text-sm shrink-0 shadow-xs`}>
+                          {rank}
+                        </span>
+                        <span className="text-white font-extrabold text-sm md:text-base truncate group-hover:text-yellow-200 transition-colors">
+                          {item.nama}
+                        </span>
+                      </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[#80ED99] font-black text-sm md:text-base">{item.poin}</span>
-                      <span className="text-white/90 text-xs font-semibold italic mr-1">Poin</span>
-                      <span className="text-[#80ED99] font-black text-sm md:text-base">{item.count}x</span>
-                      <span className="text-white/90 text-xs font-semibold italic">Pelanggaran</span>
-                      <ArrowUpRight className="w-4 h-4 text-white ml-1 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform stroke-[2.5]" />
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[#80ED99] font-black text-sm md:text-base">{item.poin}</span>
+                        <span className="text-white/90 text-xs font-semibold italic mr-1">Poin</span>
+                        <span className="text-[#80ED99] font-black text-sm md:text-base">{item.count}x</span>
+                        <span className="text-white/90 text-xs font-semibold italic">Pelanggaran</span>
+                        <ArrowUpRight className="w-4 h-4 text-white ml-1 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform stroke-[2.5]" />
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full py-10 text-white/80 text-xs font-semibold">
+                  <span>Belum ada data santri pelanggar</span>
+                </div>
+              )
             )}
           </div>
         </div>

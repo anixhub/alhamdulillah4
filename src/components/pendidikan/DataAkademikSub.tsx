@@ -1559,51 +1559,7 @@ export default function DataAkademikSub({
           </button>
         </div>
 
-        {/* Mode Pilih or Dynamic Actions Bar */}
-        {isSelectionMode && (
-          <div className="mt-3 flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2.5 md:gap-3 w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 shadow-sm h-11">
-            <span className="font-display text-xs font-bold text-slate-700 whitespace-nowrap px-1">
-              {selectedSantriIds.length} terpilih
-            </span>
-            
-            <div className="h-5 w-[1px] bg-slate-200" />
-            
-            <div className="flex items-center gap-1.5">
-              {/* Bulk Edit Penempatan */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedSantriIds.length === 0) {
-                    alert("Silakan pilih minimal 1 santri untuk diedit.");
-                    return;
-                  }
-                  const toEdit = sortedSantri.filter(s => selectedSantriIds.includes(s.id));
-                  handleOpenEditModal(toEdit);
-                }}
-                className="inline-flex h-8 px-2.5 items-center justify-center gap-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 active:scale-95 transition-all cursor-pointer font-bold text-xs border-none"
-                title={`Ubah ${academicType === 'rombel' ? 'Rombel' : 'Kelas Internal'} Masal`}
-              >
-                <Edit2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Ubah {academicType === 'rombel' ? 'Rombel' : 'Kelas Internal'}</span>
-              </button>
 
-              <div className="h-5 w-[1px] bg-slate-200" />
-
-              {/* Cancel Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedSantriIds([]);
-                  setIsSelectionMode(false);
-                }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer border-none bg-transparent"
-                title="Batal Pilih"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Filters Panel */}
         <AnimatePresence>
@@ -2211,14 +2167,6 @@ export default function DataAkademikSub({
                             title="Klik untuk lihat biodata lengkap"
                           >
                             {renderSantriAvatar(s, "h-9 w-9 shrink-0 rounded-full border border-slate-100 shadow-xs hover:ring-2 hover:ring-indigo-300 transition-all")}
-                            {(() => {
-                              const age = calculateRealtimeAge(s.tanggalLahir);
-                              return age !== null ? (
-                                <span className="absolute -bottom-1 -left-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-emerald-600 text-[8px] font-black text-white border border-white shadow-xs" title={`Umur realtime: ${age} tahun`}>
-                                  {age}
-                                </span>
-                              ) : null;
-                            })()}
                           </div>
                           <div className="flex flex-col min-w-0">
                             <p 
@@ -3085,6 +3033,61 @@ export default function DataAkademikSub({
             </div>
           );
         })()}
+      </AnimatePresence>
+
+      {/* Floating Minimalist Batch Action Bar */}
+      <AnimatePresence>
+        {isSelectionMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.95 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md text-white border border-slate-700/80 shadow-2xl rounded-2xl px-4 py-2.5 text-xs font-sans max-w-[92vw] sm:max-w-max"
+          >
+            {/* Left side: Count selected */}
+            <div className="flex items-center gap-2 border-r border-slate-700 pr-3">
+              <div className="h-5 w-5 rounded-full bg-indigo-500 text-white font-black text-[10px] flex items-center justify-center shrink-0">
+                {selectedSantriIds.length}
+              </div>
+              <span className="font-bold whitespace-nowrap text-slate-200">
+                {selectedSantriIds.length} Santri Dipilih
+              </span>
+            </div>
+
+            {/* Right side: Action buttons */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedSantriIds.length === 0) {
+                    alert("Silakan pilih minimal 1 santri untuk diedit.");
+                    return;
+                  }
+                  const toEdit = sortedSantri.filter(s => selectedSantriIds.includes(s.id));
+                  handleOpenEditModal(toEdit);
+                }}
+                disabled={selectedSantriIds.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer border-none"
+                title={`Ubah ${academicType === 'rombel' ? 'Rombel' : 'Kelas Internal'} Masal`}
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+                <span>Ubah {academicType === 'rombel' ? 'Rombel' : 'Kelas Internal'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedSantriIds([]);
+                  setIsSelectionMode(false);
+                }}
+                className="px-2.5 py-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white font-bold transition-all cursor-pointer border-none bg-transparent"
+                title="Tutup Mode Pilih"
+              >
+                Batal
+              </button>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
     </div>

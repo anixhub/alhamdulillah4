@@ -114,7 +114,6 @@ export default function LembagaKelasSub({
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('Semua');
-  const [kamarFilter, setKamarFilter] = useState<string>('Semua');
   const [activeActionStudentId, setActiveActionStudentId] = useState<string | null>(null);
   const [activeEmisDropdownId, setActiveEmisDropdownId] = useState<string | null>(null);
   const [activeVervalDropdownId, setActiveVervalDropdownId] = useState<string | null>(null);
@@ -929,11 +928,6 @@ export default function LembagaKelasSub({
 
   const currentClassStudents = getStudentsInSelectedClass();
 
-  // List of available rooms in the current class
-  const availableKamarsInClass = Array.from(
-    new Set(currentClassStudents.map(s => s.kamar).filter((k): k is string => !!k && k.trim() !== '' && k !== '-'))
-  ).sort();
-
   // Filtered students by search query and status filter
   const searchedStudents = currentClassStudents.filter(s => {
     const q = searchQuery.toLowerCase();
@@ -945,12 +939,6 @@ export default function LembagaKelasSub({
     );
 
     if (!matchesSearch) return false;
-
-    // Filter Kamar
-    if (kamarFilter && kamarFilter !== 'Semua') {
-      const studentKamar = (s.kamar || '-').trim();
-      if (studentKamar !== kamarFilter) return false;
-    }
 
     // Apply status filter
     if (statusFilter && statusFilter !== 'Semua') {
@@ -2371,14 +2359,31 @@ export default function LembagaKelasSub({
                       <Printer className="h-4 w-4 text-slate-600" />
                     </button>
                     {canWriteCurrent && (
-                      <button
-                        disabled={isSelectionMode}
-                        onClick={() => handleOpenLembagaModal(selectedLembaga)}
-                        className="inline-flex items-center justify-center bg-white border border-slate-200 h-8 w-8 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer shadow-3xs active:scale-95 transition-all disabled:opacity-40"
-                        title="Edit Lembaga"
-                      >
-                        <Pencil className="h-4 w-4 text-slate-600" />
-                      </button>
+                      <>
+                        <button
+                          disabled={isSelectionMode}
+                          onClick={() => handleOpenLembagaModal(selectedLembaga)}
+                          className="inline-flex items-center justify-center bg-white border border-slate-200 h-8 w-8 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer shadow-3xs active:scale-95 transition-all disabled:opacity-40"
+                          title="Edit Lembaga"
+                        >
+                          <Pencil className="h-4 w-4 text-slate-600" />
+                        </button>
+                        <button
+                          disabled={isSelectionMode}
+                          onClick={() => {
+                            if (isSelectionMode) return;
+                            handleDeleteLembagaClick(selectedLembaga.id, selectedLembaga.nama);
+                          }}
+                          className={`inline-flex items-center justify-center border h-8 w-8 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                            isSelectionMode 
+                              ? 'bg-rose-50/50 border-rose-50/50 opacity-40 cursor-not-allowed text-rose-350' 
+                              : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-150 cursor-pointer shadow-3xs active:scale-95'
+                          }`}
+                          title={activeTab === 'Rombel' ? 'Hapus Kategori Rombel' : 'Hapus Lembaga'}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -2658,33 +2663,26 @@ export default function LembagaKelasSub({
                       {activeTab === 'Formal' && (
                         isCalonPelajarPage ? (
                           <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-2xs flex flex-col justify-between min-h-[105px]">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-2">STATUS EMIS</span>
-                            <div className="flex flex-col gap-2">
-                              {/* Row 1: Terdaftar */}
-                              <div className="flex flex-col gap-0.5">
-                                <div className="flex justify-between items-center text-[10px] font-bold text-slate-500">
-                                  <span className="text-blue-700">Terdaftar</span>
-                                  <span>{emisRegisteredCount} ({emisRegisteredPercent}%)</span>
-                                </div>
-                                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                  <div 
-                                    className="bg-blue-600 h-full rounded-full transition-all duration-500" 
-                                    style={{ width: `${emisRegisteredPercent}%` }}
-                                  />
-                                </div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">STATUS EMIS</span>
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex justify-between items-center text-[11px] font-bold text-slate-600">
+                                <span className="text-blue-700 font-extrabold">Terdaftar</span>
+                                <span className="font-extrabold text-blue-800 bg-blue-50 px-2.5 py-0.5 rounded-lg text-xs">{emisRegisteredCount}/{totalStudents}</span>
                               </div>
-                              {/* Row 2: Belum */}
-                              <div className="flex flex-col gap-0.5">
-                                <div className="flex justify-between items-center text-[10px] font-bold text-slate-500">
-                                  <span className="text-amber-700">Belum</span>
-                                  <span>{emisBelumCount} ({emisBelumPercent}%)</span>
+                              <div className="w-full bg-slate-100 h-6 rounded-xl overflow-hidden relative shadow-inner">
+                                <div 
+                                  className="bg-blue-600 h-full rounded-xl transition-all duration-500 flex items-center justify-end pr-3 text-[10px] font-extrabold text-white" 
+                                  style={{ width: `${Math.max(totalStudents > 0 ? Math.round((emisRegisteredCount / totalStudents) * 100) : 0, 14)}%` }}
+                                >
+                                  {(totalStudents > 0 ? Math.round((emisRegisteredCount / totalStudents) * 100) : 0) > 8 ? `${totalStudents > 0 ? Math.round((emisRegisteredCount / totalStudents) * 100) : 0}%` : ''}
                                 </div>
-                                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                  <div 
-                                    className="bg-amber-500 h-full rounded-full transition-all duration-500" 
-                                    style={{ width: `${emisBelumPercent}%` }}
-                                  />
-                                </div>
+                                {(totalStudents > 0 ? Math.round((emisRegisteredCount / totalStudents) * 100) : 0) <= 8 && (
+                                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-extrabold text-slate-700">
+                                    {totalStudents > 0 ? Math.round((emisRegisteredCount / totalStudents) * 100) : 0}%
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -2787,68 +2785,9 @@ export default function LembagaKelasSub({
                       </div>
                       )}
 
-                      {/* Filter Kamar Select */}
-                      <div className="w-full sm:w-48 shrink-0 relative">
-                        <select
-                          value={kamarFilter}
-                          onChange={(e) => {
-                            setKamarFilter(e.target.value);
-                            setCurrentPage(1);
-                          }}
-                          className="w-full h-11 pl-4 pr-10 bg-slate-50 border border-slate-100/80 rounded-2xl text-xs font-bold text-slate-750 focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-600/20 focus:border-[#00693E] appearance-none transition-all shadow-3xs cursor-pointer"
-                        >
-                          <option value="Semua">Semua Kamar</option>
-                          {availableKamarsInClass.map(kmr => (
-                            <option key={kmr} value={kmr}>Kamar {kmr}</option>
-                          ))}
-                        </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 flex items-center">
-                          <ChevronDown className="h-4 w-4" />
-                        </div>
-                      </div>
                     </div>
 
-                    {/* Bulk Selection Action Bar (Text only action triggers) */}
-                    {isSelectionMode && selectedStudentIds.length > 0 && (
-                      <div className="mb-4 border border-emerald-100 bg-emerald-50/40 px-5 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0 rounded-2xl animate-in slide-in-from-top duration-200 shadow-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                          <span className="text-xs font-black text-emerald-800 uppercase tracking-wide">
-                            {selectedStudentIds.length} Santri Terpilih
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => {
-                              setIsBulkTransferOpen(true);
-                              setBulkTransferLembagaId(selectedLembaga.id);
-                              setBulkDestClassId('');
-                            }}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
-                          >
-                            <ArrowRightLeft className="h-3.5 w-3.5" />
-                            <span>Pindah Masal</span>
-                          </button>
-                          <button
-                            onClick={handleBulkRemoveStudentsFromClass}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
-                          >
-                            <UserMinus className="h-3.5 w-3.5" />
-                            <span>Keluarkan Masal</span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedStudentIds([]);
-                              setIsSelectionMode(false);
-                            }}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
-                          >
-                            Batal
-                          </button>
-                        </div>
-                      </div>
-                    )}
+
 
                     {/* Data Table */}
                     {(() => {
@@ -2856,7 +2795,7 @@ export default function LembagaKelasSub({
                       const isSomeSelected = filteredStudents.length > 0 && filteredStudents.some(s => selectedStudentIds.includes(s.id));
 
                       return (
-                        <div className="relative bg-white rounded-3xl border border-slate-100 shadow-2xs flex flex-col flex-1 min-h-0 overflow-visible">
+                        <div className="relative bg-white rounded-3xl border border-slate-100 shadow-2xs overflow-visible">
                           {/* Scroll Right Button floating over the right end edge of header */}
                           {renderScrollButtons(false)}
 
@@ -4668,6 +4607,79 @@ export default function LembagaKelasSub({
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Minimalist Batch Action Bar */}
+      <AnimatePresence>
+        {isSelectionMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.95 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md text-white border border-slate-700/80 shadow-2xl rounded-2xl px-4 py-2.5 text-xs font-sans max-w-[92vw] sm:max-w-max"
+          >
+            {/* Left side: Count selected */}
+            <div className="flex items-center gap-2 border-r border-slate-700 pr-3">
+              <div className="h-5 w-5 rounded-full bg-emerald-500 text-white font-black text-[10px] flex items-center justify-center shrink-0">
+                {selectedStudentIds.length}
+              </div>
+              <span className="font-bold whitespace-nowrap text-slate-200">
+                {selectedStudentIds.length} Santri Dipilih
+              </span>
+            </div>
+
+            {/* Right side: Action buttons */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedStudentIds.length === 0) {
+                    showToast('Pilih setidaknya satu santri terlebih dahulu.');
+                    return;
+                  }
+                  setIsBulkTransferOpen(true);
+                  setBulkTransferLembagaId(selectedLembaga?.id || '');
+                  setBulkDestClassId('');
+                }}
+                disabled={selectedStudentIds.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer border-none"
+                title="Pindah Kelas/Rombel Masal"
+              >
+                <ArrowRightLeft className="h-3.5 w-3.5" />
+                <span>Pindah Masal</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedStudentIds.length === 0) {
+                    showToast('Pilih setidaknya satu santri terlebih dahulu.');
+                    return;
+                  }
+                  handleBulkRemoveStudentsFromClass();
+                }}
+                disabled={selectedStudentIds.length === 0}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer border-none"
+                title="Keluarkan Masal"
+              >
+                <UserMinus className="h-3.5 w-3.5" />
+                <span>Keluarkan</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedStudentIds([]);
+                  setIsSelectionMode(false);
+                }}
+                className="px-2.5 py-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white font-bold transition-all cursor-pointer border-none bg-transparent"
+                title="Tutup Mode Pilih"
+              >
+                Batal
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
